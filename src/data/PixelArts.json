@@ -1,0 +1,56 @@
+[
+    {
+        "id": 0,
+        "title": "可乐",
+        "description": "这是百事还是可口？",
+        "image": "/images/可乐.png",
+        "date": "2026-08-20",
+        "category": "食物", 
+        "size": 1
+    },
+    {
+        "id": 1,
+        "title": "汉堡",
+        "description": "两个面包夹着菜和面饼就是汉堡了？",
+        "image": "/images/汉堡.png",
+        "date": "2026-08-20",
+        "category": "食物",
+        "size": 0
+    },
+    {
+        "id": 2,
+        "title": "地球",
+        "description": "我们共同生活的家园",
+        "image": "/images/地球.png",
+        "date": "2026-08-23",
+        "category": "自然",
+        "size": 1
+    },
+    {
+        "id": 3,
+        "title": "草方块",
+        "description": "绿色覆盖大地，生命在此萌芽",
+        "image": "/images/草方块.png",
+        "date": "2025-xx-xx",
+        "category": "自然",
+        "size": 2
+    },
+    {
+        "id": 4,
+        "title": "窗外的世界",
+        "description": "透过像素窗格，看见远方的光",
+        "image": "/images/窗外的世界.png",
+        "date": "2025-xx-xx",
+        "category": "风景",
+        "size": 2
+    },
+    {
+        "id": 5,
+        "title": "三叶草",
+        "description": "找到四叶草之前，先画好三叶草",
+        "image": "/images/三叶草.png",
+        "date": "2025-xx-xx",
+        "category": "自然",
+        "size": 2
+    }
+]
