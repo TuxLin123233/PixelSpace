@@ -48,6 +48,7 @@ header{
   font-size: 32px;
   line-height: 40px;
   margin-left: 15px;
+  cursor: pointer;
 }
 
 #navi{
@@ -57,7 +58,17 @@ header{
   display: flex;
   justify-content: space-evenly;
   cursor: pointer;
+  user-select: none;
 
   padding: 5px;
+}
+
+#navi span{
+  padding-bottom: 2px;
+}
+
+#navi span:hover{
+  border-bottom: 2px solid black;
+  padding-bottom: 0px;
 }
 </style>

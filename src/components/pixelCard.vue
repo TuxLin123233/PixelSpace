@@ -38,6 +38,14 @@ const image_width = computed(() => {
     border-radius: 10px;
     box-sizing: border-box;
     padding-bottom: 10px;
+    transition: transform 0.5s ease, box-shadow 0.5s ease;
+}
+
+.pixel-card:hover{
+    transform: translateY(-10px);
+    box-shadow: 0px 0px 10px rgb(206, 206, 206);
+    user-select: none;
+    cursor: pointer;
 }
 
 .display{
@@ -50,10 +58,15 @@ const image_width = computed(() => {
     align-items: center;
 }
 
+.title{
+    font-weight: bold;
+}
 
 .content{
+    border-top: 1px solid rgb(218, 218, 218);
     margin-left: 10px;
     margin-right: 10px;
+    padding-top: 10px;
 }
 
 .description{
@@ -65,7 +78,7 @@ const image_width = computed(() => {
 .date{
     margin-right: 10px;
     text-align: right; 
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 .title{
