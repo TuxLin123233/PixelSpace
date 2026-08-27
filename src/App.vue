@@ -1,7 +1,8 @@
 <script setup>
   import { ref } from 'vue';
   import Gallery from './views/Gallery.vue'
-  
+  import Create from './views/Create.vue';
+
   //存储页面导航
   const currentPage = ref("gallery")
 </script>
@@ -31,6 +32,7 @@
 
     <!-- 内容 -->
     <Gallery v-if="currentPage=='gallery'"></Gallery>
+    <Create v-if="currentPage=='create'"></Create>
   </div>
 </template>
 
@@ -98,6 +100,6 @@ header{
 }
 
 .navi span:hover{
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--button-hover-color);
 }
 </style>

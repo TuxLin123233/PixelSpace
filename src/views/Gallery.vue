@@ -12,10 +12,12 @@
         >
         <img src="../assets/svgs/search.svg" alt="放大镜" width="30">
     </div>
+    <!-- 点击后显示的详细信息窗口 -->
+    <imageModal v-if="show_image" @close_image="handleCloseImage" :art="slect_art"></imageModal>
     <!-- 内容区 -->
     <div id="content">
         <div v-for="i in cardRow" class="card-row">
-            <pixelCard v-for="art in getRow(i - 1)" :key="art.id" :art="art"/>
+            <pixelCard v-for="art in getRow(i - 1)" :key="art.id" :art="art" @show_image="handleShowImage"/>
         </div>
     </div>
 </template>
@@ -23,10 +25,23 @@
 <script setup>
 import pixelArts from "@/data/PixelArts.json"
 import pixelCard from "@/components/pixelCard.vue";
-import { computed, ref } from "vue";
+import imageModal from "@/components/imageModal.vue";
+import { computed, ref} from "vue";
+import { getPixelImages } from "@/composables/getPixelImages";
 
 const search = ref("")      //绑定搜索结果
-
+const show_image = ref(false)   //记录是否展示大卡片弹窗
+const slect_art = ref({})   //记录现在所选的某一个像素画对象
+const handleShowImage = function(art){
+    //展示大卡片
+    show_image.value = true
+    slect_art.value = art
+}
+const handleCloseImage = function(){
+    //关闭大卡片
+    show_image.value = false
+    slect_art.value = {}
+}
 /**
  * 数据流：
     i=1 → getRow(0) → start=0 → 取 [0,1,2,3]
@@ -37,15 +52,11 @@ const cardRow = computed(() => {        //获取当前有多少行
     return Math.ceil(pixelArts.length / 4)
 })
 const getRow = function(rowIndex){
+    //根据某一行来给出该行的所有元素
     const start = (rowIndex) * 4
-    return pixelArts.slice(start, start + 4)
+    return pixelArts.slice(start, start + 4)    //切片
 }
 
-function getPixelImages(title){
-    //根据名字找到特定的像素画
-    const earth = pixelArts.find(item => item.title === title)
-    return earth.image
-}
 </script>
 
 <style scoped>

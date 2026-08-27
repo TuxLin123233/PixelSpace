@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, defineEmits} from 'vue';
 
-const props = defineProps(['art'])
-const image_width = computed(() => {
+const props = defineProps(['art'])      //接受父组件的信息
+const emit = defineEmits(['show_image'])
+const image_width = computed(() => {    //自适应图片大小
     if (props.art.size === 2){
         return 130
     }else if (props.art.size == 0){
@@ -11,10 +12,15 @@ const image_width = computed(() => {
         return 150
     }
 })
+
+function send_show_image(){
+    //发送展示像素作品窗口的消息
+    emit('show_image', props.art)
+}
 </script>
 
 <template>
-    <div class="pixel-card">
+    <div class="pixel-card" @click="send_show_image">
         <!-- 图像展示区 -->
         <div class="display">  
             <img :src="art.image" :alt="art.title" :width="image_width">
@@ -30,11 +36,11 @@ const image_width = computed(() => {
     </div>
 </template>
 
-<style>
+<style scoped>
 .pixel-card{
     width: 170px;
     height: 260px;
-    box-shadow: 0px 0px 5px rgb(206, 206, 206);
+    box-shadow: 0px 0px 5px var(--boxshadow-color);
     border-radius: 10px;
     box-sizing: border-box;
     padding-bottom: 10px;
@@ -43,7 +49,7 @@ const image_width = computed(() => {
 
 .pixel-card:hover{
     transform: translateY(-10px);
-    box-shadow: 0px 0px 10px rgb(206, 206, 206);
+    box-shadow: 0px 0px 10px var(--boxshadow-color);
     user-select: none;
     cursor: pointer;
 }
