@@ -14,10 +14,18 @@
       <span id="website-name" @click="currentPage='gallery'">PixelSpace</span>
 
       <!-- 导航 -->
-      <div id="navi">
-        <span @click="currentPage='gallery'">作品集</span>
-        <span @click="currentPage='about'">关于</span>
-        <span @click="currentPage='call'">联系</span>
+      <!-- 主要功能 -->
+      <div class="navi" id="navi-main">
+        <span @click="currentPage='gallery'"><img src="@/assets/svgs/grid.svg" width="40">作品集</span>
+        <span @click="currentPage='about'"><img src="@/assets/svgs/about.svg" width="40">关于</span>
+        <span @click="currentPage='call'"><img src="@/assets/svgs/mail.svg" width="40">联系</span>
+      </div>
+
+      <!-- 用户功能 -->
+      <div class="navi" id="navi-user">
+        <span @click="currentPage='create'"><img src="@/assets/svgs/cube.svg" width="40">开始创作</span>
+        <span @click="currentPage='mine'"><img src="@/assets/svgs/category.svg" width="40">我的作品</span>
+        <span @click="currentPage='settings'"><img src="@/assets/svgs/setting.svg" width="40">设置</span>
       </div>
     </header>
 
@@ -40,7 +48,19 @@
 
 header{
   display: flex;
+  align-items: center;
   margin-bottom: 50px;
+}
+
+/* 顶栏右侧的用户功能 */
+#navi-user{
+  width: 350px;
+  margin-left: auto;
+  margin-right: 15px;
+}
+
+#navi-main{
+  width: 320px;
 }
 
 #website-name{
@@ -51,8 +71,8 @@ header{
   cursor: pointer;
 }
 
-#navi{
-  font-size: 30px;
+.navi{
+  font-size: 25px;
   width: 300px;
 
   display: flex;
@@ -63,12 +83,21 @@ header{
   padding: 5px;
 }
 
-#navi span{
-  padding-bottom: 2px;
+.navi span{
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
 }
 
-#navi span:hover{
-  border-bottom: 2px solid black;
-  padding-bottom: 0px;
+.navi span img{
+  width: 22px;
+  height: 22px;
+}
+
+.navi span:hover{
+  background: rgba(0, 0, 0, 0.08);
 }
 </style>

@@ -86,6 +86,10 @@ function getPixelImages(title){
     font-size: 30px;
 }
 
+#search img:hover{
+    cursor: pointer;
+}
+
 .card-row{
     width: 1000px;
     display: flex;
