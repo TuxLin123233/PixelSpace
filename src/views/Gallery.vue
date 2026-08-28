@@ -10,7 +10,7 @@
         v-model="search"
         placeholder="搜索..."
         >
-        <img src="../assets/svgs/search.svg" alt="放大镜" width="30">
+        <img src="../assets/svgs/search.svg" alt="放大镜" width="30" @click="">
     </div>
     <!-- 点击后显示的详细信息窗口 -->
     <imageModal v-if="show_image" @close_image="handleCloseImage" :art="slect_art"></imageModal>
@@ -42,6 +42,17 @@ const handleCloseImage = function(){
     show_image.value = false
     slect_art.value = {}
 }
+
+//获取搜索结果
+const filtered = computed(() => {
+    if (!search.value.trim()){
+        return pixelArts
+    }
+    return pixelArts.filter(item => 
+        item.title.includes(search.value)
+    )
+})
+
 /**
  * 数据流：
     i=1 → getRow(0) → start=0 → 取 [0,1,2,3]
@@ -49,14 +60,13 @@ const handleCloseImage = function(){
     i=3 → getRow(2) → start=8 → 取 [8,9,...]
  */
 const cardRow = computed(() => {        //获取当前有多少行
-    return Math.ceil(pixelArts.length / 4)
+    return Math.ceil(filtered.value.length / 4)
 })
 const getRow = function(rowIndex){
     //根据某一行来给出该行的所有元素
     const start = (rowIndex) * 4
-    return pixelArts.slice(start, start + 4)    //切片
+    return filtered.value.slice(start, start + 4)    //切片
 }
-
 </script>
 
 <style scoped>
