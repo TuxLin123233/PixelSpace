@@ -2,3 +2,15 @@
     --boxshadow-color: rgb(206, 206, 206);
     --button-hover-color: rgba(0, 0, 0, 0.08);
 }
+
+.nature{
+    color: #20570A;
+}
+
+.food{
+    color: #1A2E54;
+}
+
+.scenery{
+    color: #725746;
+}

@@ -8,8 +8,16 @@
                 <img src="../assets/svgs/close.svg" alt="close" width="35" @click="closeModal">
             </header>
             <div id="content">
+                <!-- 图像 -->
                 <div id="display">
                     <img :src="art.image" :alt="art.title" :width="picture_size">
+                </div>
+                <!-- 文字 -->
+                <div id="word">
+                    <span id="category" :class="colorStyle">类别: {{ art.category }}</span>
+                    <span id="description">{{ art.description }}</span>
+                    <!-- 日期-->
+                    <span id="date">创作日期: {{ art.date }}</span>
                 </div>
             </div>
         </div>
@@ -17,22 +25,32 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 const emit = defineEmits(['close_image'])
 const props = defineProps(['art'])
+
+const color_standard = {
+        "自然": "nature",
+        "食物": "food",
+        "风景": "scenery",
+    }
 
 //告诉父组件关闭窗口
 const closeModal = () => {
     emit('close_image')
 }
 
-const picture_size = computed(() => {
+const picture_size = computed(() => {   //自适应图片大小
     if (props.art.size == 2){
         return 130
     }else{
         return 200
     }
+})
+
+const colorStyle = computed(() => {
+    return color_standard[props.art.category]
 })
 </script>
 
@@ -115,5 +133,39 @@ img[alt="close"]{
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+#content{
+    display: flex;
+}
+
+#word span{
+    display: block;
+}
+
+#category{
+    font-size: 30px;
+    margin-left: 30px;
+}
+
+#description{
+    font-size: 24px;
+    background-color: #fdf3e5;
+    width: 400px;
+    height: 60px;
+    padding-left: 10px;
+    padding-top: 5px;
+    border-radius: 10px;
+    margin-top: 5px;
+    margin-left: 20px;
+    color: rgb(73, 73, 73);
+}
+
+#date{
+    font-size: 20px;
+    font-weight: bold;
+    margin-left: 25px;
+    text-align: right;
+    margin-top: 25px;
 }
 </style>
