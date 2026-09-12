@@ -4,7 +4,7 @@
   import Create from './views/Create.vue';
 
   //存储页面导航
-  const currentPage = ref("gallery")
+  const currentPage = ref("mine")
 </script>
 
 <template>
