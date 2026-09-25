@@ -68,7 +68,52 @@
         color: #fff;
       }
 
-      .palette {
+      .pick-wrap {
+        width: 100%;
+        max-width: 460px;
+        margin-top: 14px;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 6px 20px rgba(80, 60, 40, 0.10);
+        padding: 16px;
+        display: grid;
+        grid-template-columns: 1fr 28px;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .sv-box {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        touch-action: none;
+      }
+
+      .hue-box {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        touch-action: none;
+        cursor: pointer;
+      }
+
+      #svCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+      #svMarker { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+      #hueCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      #hueMarker { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+      .cur {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+        font-size: 15px;
+        color: #3b342c;
+        font-weight: 600;
+      }
+
+      .records {
         width: 100%;
         max-width: 460px;
         margin-top: 14px;
@@ -78,47 +123,95 @@
         padding: 16px;
       }
 
-      .palette-row {
+      .records-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #9a8c7a;
+        margin-bottom: 10px;
+      }
+
+      .record-list {
         display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
       }
 
-      .swatch {
+      .record-list::-webkit-scrollbar { display: none; }
+
+      .tile {
         flex: 0 0 auto;
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        border: 2px solid rgba(0, 0, 0, 0.08);
-        cursor: pointer;
-        transition: transform 0.12s ease, box-shadow 0.12s ease;
-      }
-
-      .swatch:active { transform: scale(0.9); }
-
-      .swatch.selected {
-        box-shadow: 0 0 0 3px #fff, 0 0 0 6px #5b8def;
-        transform: scale(1.08);
-      }
-
-      .swatch.custom {
-        position: relative;
-        background: conic-gradient(red, orange, yellow, green, cyan, blue, magenta, red);
-        overflow: hidden;
-      }
-
-      .swatch.custom input {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        margin: 0;
+        width: 64px;
         padding: 0;
-        border: none;
-        opacity: 0;
-        cursor: pointer;
+        background: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
       }
+
+      .thumb {
+        width: 56px;
+        height: 56px;
+        image-rendering: pixelated;
+        border-radius: 8px;
+        border: 2px solid rgba(0, 0, 0, 0.08);
+        background: #fff;
+      }
+
+      .tile-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 12px;
+        color: #6b5f50;
+        line-height: 1.3;
+        max-width: 64px;
+        word-break: break-all;
+        text-align: center;
+      }
+
+      .tile-time {
+        font-size: 10px;
+        color: #b0a697;
+      }
+
+      .record-empty {
+        font-size: 13px;
+        color: #b0a697;
+        padding: 8px 2px;
+      }
+
+      .name-row {
+        width: 100%;
+        max-width: 460px;
+        margin-top: 14px;
+      }
+
+      .name-row input {
+        width: 100%;
+        height: 46px;
+        border-radius: 14px;
+        border: 2px solid #e0d8d0;
+        padding: 0 14px;
+        font-size: 15px;
+        background: #fff;
+        outline: none;
+        color: #3b342c;
+      }
+
+      .name-row input:focus { border-color: #5b8def; }
+
+      .cur-swatch {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        background: #e53935;
+      }
+
+      #curHex { letter-spacing: 0.5px; }
 
       .actions {
         width: 100%;
@@ -192,8 +285,29 @@
       <button id="toolFill" class="tool" type="button" data-tool="fill">颜料桶</button>
     </div>
 
-    <div class="palette">
-      <div id="paletteRow" class="palette-row"></div>
+    <div class="pick-wrap">
+      <div class="sv-box" id="svBox">
+        <canvas id="svCanvas"></canvas>
+        <canvas id="svMarker"></canvas>
+      </div>
+      <div class="hue-box" id="hueBox">
+        <canvas id="hueCanvas"></canvas>
+        <canvas id="hueMarker"></canvas>
+      </div>
+    </div>
+
+    <div class="cur">
+      <span class="cur-swatch" id="curSwatch"></span>
+      <span id="curHex">#e53935</span>
+    </div>
+
+    <div class="records">
+      <div class="records-title">历史记录（最多 10 条）</div>
+      <div id="recordList" class="record-list"></div>
+    </div>
+
+    <div class="name-row">
+      <input id="nameInput" type="text" placeholder="你的名字（上传时绑定到作品）" maxlength="20">
     </div>
 
     <div class="actions">
@@ -206,17 +320,6 @@
 
     <script>
       const SIZE = 16
-      const COLORS = [
-        ['#e53935', '红'],
-        ['#fb8c00', '橙'],
-        ['#fdd835', '黄'],
-        ['#43a047', '绿'],
-        ['#00acc1', '青'],
-        ['#1e88e5', '蓝'],
-        ['#8e24aa', '紫'],
-        ['#ffffff', '白'],
-        ['#212121', '黑'],
-      ]
       const TOOL_HINTS = {
         brush: '画笔：点按或滑动作画',
         eraser: '橡皮擦：点按或滑动擦除为白色',
@@ -238,53 +341,169 @@
       let activeTool = 'brush'
 
       const hint = document.getElementById('hint')
+      const curSwatch = document.getElementById('curSwatch')
+      const curHex = document.getElementById('curHex')
 
-      const paletteRow = document.getElementById('paletteRow')
-      const swatches = COLORS.map(([hex]) => {
-        const sw = document.createElement('button')
-        sw.type = 'button'
-        sw.className = 'swatch'
-        sw.style.background = hex
-        sw.dataset.rgb = JSON.stringify(hexToRgb(hex))
-        sw.addEventListener('click', () => selectColor(sw))
-        paletteRow.appendChild(sw)
-        return sw
-      })
+      /* ---------- 颜色拾取器 ---------- */
+      const svBox = document.getElementById('svBox')
+      const svCanvas = document.getElementById('svCanvas')
+      const svMarker = document.getElementById('svMarker')
+      const hueBox = document.getElementById('hueBox')
+      const hueCanvas = document.getElementById('hueCanvas')
+      const hueMarker = document.getElementById('hueMarker')
+      const ctxSv = svCanvas.getContext('2d')
+      const ctxSvM = svMarker.getContext('2d')
+      const ctxHue = hueCanvas.getContext('2d')
+      const ctxHueM = hueMarker.getContext('2d')
 
-      const customSwatch = document.createElement('label')
-      customSwatch.className = 'swatch custom'
-      customSwatch.title = '自定义颜色'
-      const colorInput = document.createElement('input')
-      colorInput.type = 'color'
-      colorInput.value = '#e53935'
-      customSwatch.appendChild(colorInput)
-      paletteRow.appendChild(customSwatch)
+      let H = 0, S = 0.77, V = 0.9
+      let SW = 0, SH = 0, HW = 0, HH = 0
 
-      colorInput.addEventListener('input', () => {
-        currentColor = hexToRgb(colorInput.value)
-        customSwatch.style.background = colorInput.value
-        swatches.forEach((s) => s.classList.remove('selected'))
-        customSwatch.classList.add('selected')
-      })
-
-      selectColor(swatches[0])
-
-      function hexToRgb(hex) {
-        const h = hex.replace('#', '')
-        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+      function hsvToRgb(h, s, v) {
+        const i = Math.floor(h * 6)
+        const f = h * 6 - i
+        const p = v * (1 - s)
+        const q = v * (1 - f * s)
+        const t = v * (1 - (1 - f) * s)
+        const rr = Math.round([v, q, p, p, t, v][i % 6] * 255)
+        const gg = Math.round([t, v, v, q, p, p][i % 6] * 255)
+        const bb = Math.round([p, p, t, v, v, q][i % 6] * 255)
+        return [rr, gg, bb]
       }
 
-      function selectColor(sw) {
-        swatches.forEach((s) => s.classList.remove('selected'))
-        customSwatch.classList.remove('selected')
-        sw.classList.add('selected')
-        currentColor = JSON.parse(sw.dataset.rgb)
+      function resizePicker() {
+        const sRect = svBox.getBoundingClientRect()
+        SW = Math.max(20, Math.round(sRect.width * dpr))
+        SH = SW
+        svCanvas.width = svCanvas.height = SW
+        svMarker.width = svMarker.height = SW
+
+        const hRect = hueBox.getBoundingClientRect()
+        HW = Math.max(10, Math.round(hRect.width * dpr))
+        HH = Math.max(20, Math.round(hRect.height * dpr))
+        hueCanvas.width = HW
+        hueCanvas.height = HH
+        hueMarker.width = HW
+        hueMarker.height = HH
+
+        renderSV()
+        renderHue()
+        drawSVMarker()
+        drawHueMarker()
       }
 
+      function renderSV() {
+        const img = ctxSv.createImageData(SW, SH)
+        const d = img.data
+        for (let y = 0; y < SH; y++) {
+          const v = 1 - y / (SH - 1)
+          for (let x = 0; x < SW; x++) {
+            const s = x / (SW - 1)
+            const [r, g, b] = hsvToRgb(H, s, v)
+            const i = (y * SW + x) * 4
+            d[i] = r
+            d[i + 1] = g
+            d[i + 2] = b
+            d[i + 3] = 255
+          }
+        }
+        ctxSv.putImageData(img, 0, 0)
+      }
+
+      function renderHue() {
+        for (let y = 0; y < HH; y++) {
+          const hue = y / (HH - 1)
+          const [r, g, b] = hsvToRgb(hue, 1, 1)
+          ctxHue.fillStyle = `rgb(${r}, ${g}, ${b})`
+          ctxHue.fillRect(0, y, HW, 1)
+        }
+      }
+
+      function drawSVMarker() {
+        ctxSvM.clearRect(0, 0, SW, SH)
+        const x = S * SW
+        const y = (1 - V) * SH
+        ctxSvM.beginPath()
+        ctxSvM.arc(x, y, 8 * dpr, 0, 2 * Math.PI)
+        ctxSvM.fillStyle = '#fff'
+        ctxSvM.fill()
+        ctxSvM.lineWidth = 2 * dpr
+        ctxSvM.strokeStyle = 'rgba(0, 0, 0, 0.7)'
+        ctxSvM.stroke()
+      }
+
+      function drawHueMarker() {
+        ctxHueM.clearRect(0, 0, HW, HH)
+        const y = H * HH
+        ctxHueM.fillStyle = '#fff'
+        ctxHueM.fillRect(0, y - 3 * dpr, HW, 6 * dpr)
+        ctxHueM.strokeStyle = 'rgba(0, 0, 0, 0.7)'
+        ctxHueM.lineWidth = 1.5 * dpr
+        ctxHueM.beginPath()
+        ctxHueM.moveTo(0, y)
+        ctxHueM.lineTo(HW, y)
+        ctxHueM.stroke()
+      }
+
+      function applyColor() {
+        currentColor = hsvToRgb(H, S, V)
+        curSwatch.style.background = `rgb(${currentColor[0]}, ${currentColor[1]}, ${currentColor[2]})`
+        curHex.textContent = '#' + currentColor.map((c) => c.toString(16).padStart(2, '0')).join('')
+      }
+
+      let svDrag = false
+      let hueDrag = false
+
+      function svPos(e) {
+        const rect = svCanvas.getBoundingClientRect()
+        const s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+        const v = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height))
+        return [s, v]
+      }
+
+      function setSV(e) {
+        ;[S, V] = svPos(e)
+        drawSVMarker()
+        applyColor()
+      }
+
+      svCanvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault()
+        svDrag = true
+        svCanvas.setPointerCapture(e.pointerId)
+        setSV(e)
+      })
+      svCanvas.addEventListener('pointermove', (e) => {
+        if (svDrag) setSV(e)
+      })
+      svCanvas.addEventListener('pointerup', () => (svDrag = false))
+      svCanvas.addEventListener('pointercancel', () => (svDrag = false))
+
+      function setHue(e) {
+        const rect = hueCanvas.getBoundingClientRect()
+        H = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+        renderSV()
+        drawHueMarker()
+        applyColor()
+      }
+
+      hueCanvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault()
+        hueDrag = true
+        hueCanvas.setPointerCapture(e.pointerId)
+        setHue(e)
+      })
+      hueCanvas.addEventListener('pointermove', (e) => {
+        if (hueDrag) setHue(e)
+      })
+      hueCanvas.addEventListener('pointerup', () => (hueDrag = false))
+      hueCanvas.addEventListener('pointercancel', () => (hueDrag = false))
+
+      window.addEventListener('resize', resizePicker)
+
+      /* ---------- 画板 ---------- */
       document.querySelectorAll('.tool').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          setTool(btn.dataset.tool)
-        })
+        btn.addEventListener('click', () => setTool(btn.dataset.tool))
       })
 
       function setTool(tool) {
@@ -384,6 +603,12 @@
 
       const uploadBtn = document.getElementById('uploadBtn')
       uploadBtn.addEventListener('click', async () => {
+        const name = nameInput.value.trim()
+        if (!name) {
+          toast('请先填写你的名字')
+          return
+        }
+
         const flat = []
         for (const row of pixels) for (const px of row) flat.push([px[0], px[1], px[2]])
 
@@ -392,11 +617,12 @@
           const res = await fetch('/api/set', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pixels: flat }),
+            body: JSON.stringify({ pixels: flat, name }),
           })
           const data = await res.json().catch(() => ({}))
           if (res.ok) {
-            toast('上传成功')
+            toast('上传成功：' + data.name)
+            fetchRecords()
           } else {
             toast('上传失败：' + (data.error || res.status))
           }
@@ -406,6 +632,98 @@
           uploadBtn.disabled = false
         }
       })
+
+      /* ---------- 名字与历史记录 ---------- */
+      const nameInput = document.getElementById('nameInput')
+
+      function readCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + encodeURIComponent(name) + '=([^;]*)'))
+        return match ? decodeURIComponent(match[1]) : ''
+      }
+
+      function initName() {
+        const saved = localStorage.getItem('paintName')
+        const cookieUser = readCookie('username')
+        nameInput.value = saved || cookieUser || ''
+        nameInput.addEventListener('input', () => {
+          localStorage.setItem('paintName', nameInput.value.trim())
+        })
+      }
+
+      function formatTime(ts) {
+        if (!ts) return ''
+        const d = new Date(ts)
+        return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      }
+
+      const recordList = document.getElementById('recordList')
+
+      async function fetchRecords() {
+        try {
+          const res = await fetch('/api/get')
+          if (!res.ok) return
+          const data = await res.json()
+          renderRecords(data.history || [])
+        } catch (err) {
+          /* 忽略加载失败 */
+        }
+      }
+
+      function renderRecords(records) {
+        recordList.innerHTML = ''
+        if (!records.length) {
+          const empty = document.createElement('div')
+          empty.className = 'record-empty'
+          empty.textContent = '还没有人上传过作品'
+          recordList.appendChild(empty)
+          return
+        }
+        records.forEach((rec) => {
+          const tile = document.createElement('button')
+          tile.type = 'button'
+          tile.className = 'tile'
+          tile.title = '点击载入画板'
+
+          const c = document.createElement('canvas')
+          c.width = 16
+          c.height = 16
+          c.className = 'thumb'
+          const tc = c.getContext('2d')
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              const px = rec.pixels[y * 16 + x]
+              if (!px) continue
+              tc.fillStyle = `rgb(${px[0]}, ${px[1]}, ${px[2]})`
+              tc.fillRect(x, y, 1, 1)
+            }
+          }
+
+          const meta = document.createElement('div')
+          meta.className = 'tile-meta'
+          const nm = document.createElement('span')
+          nm.textContent = rec.name || '匿名'
+          const tm = document.createElement('span')
+          tm.className = 'tile-time'
+          tm.textContent = formatTime(rec.time)
+          meta.append(nm, tm)
+
+          tile.append(c, meta)
+          tile.addEventListener('click', () => loadRecord(rec))
+          recordList.appendChild(tile)
+        })
+      }
+
+      function loadRecord(rec) {
+        const flat = rec.pixels
+        pixels = Array.from({ length: SIZE }, (_, y) =>
+          Array.from({ length: SIZE }, (_, x) => {
+            const px = flat[y * SIZE + x]
+            return px ? [px[0], px[1], px[2]] : [255, 255, 255]
+          })
+        )
+        redraw()
+        toast('已载入「' + (rec.name || '匿名') + '」的作品')
+      }
 
       let toastTimer
       function toast(msg) {
@@ -417,6 +735,10 @@
       }
 
       redraw()
+      resizePicker()
+      applyColor()
+      initName()
+      fetchRecords()
     </script>
   </body>
 </html>

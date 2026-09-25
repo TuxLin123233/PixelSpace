@@ -18,16 +18,32 @@ export async function onRequestGet(context) {
   const { env } = context
 
   if (!env.LIGHTFIELD_KV) {
-    return json({ pixels: null, message: 'LIGHTFIELD_KV is not configured' })
+    return json({
+      pixels: null,
+      name: null,
+      history: [],
+      message: 'LIGHTFIELD_KV is not configured',
+    })
   }
 
   const raw = await env.LIGHTFIELD_KV.get('pixels')
-  let pixels = null
+  let latest = null
   if (raw) {
     try {
-      pixels = JSON.parse(raw)
+      latest = JSON.parse(raw)
     } catch {
-      pixels = null
+      latest = null
+    }
+  }
+
+  let pixels = null
+  let name = null
+  if (latest) {
+    if (Array.isArray(latest)) {
+      pixels = latest
+    } else if (Array.isArray(latest.pixels)) {
+      pixels = latest.pixels
+      name = latest.name || null
     }
   }
 
@@ -42,5 +58,15 @@ export async function onRequestGet(context) {
   }
   if (!Array.isArray(history)) history = []
 
-  return json({ pixels, history })
+  history = history
+    .map((e) =>
+      Array.isArray(e)
+        ? { name: '', pixels: e, time: 0 }
+        : { name: e && e.name, pixels: e && e.pixels, time: e && e.time }
+    )
+    .filter((e) => Array.isArray(e.pixels))
+    .map((e) => ({ name: e.name || '', pixels: e.pixels, time: e.time || 0 }))
+    .reverse()
+
+  return json({ pixels, name, history })
 }
