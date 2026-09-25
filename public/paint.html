@@ -107,6 +107,12 @@
         line-height: 40px;
       }
 
+      .head-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .theme-btn {
         flex: 0 0 auto;
         width: 40px;
@@ -752,7 +758,10 @@
 
     <div class="page-head">
       <h1>光域画板</h1>
-      <button id="themeBtn" class="theme-btn" type="button" title="切换主题">🌙</button>
+      <div class="head-right">
+        <a class="theme-btn room-link" href="room" title="联机房间" style="text-decoration:none">👥</a>
+        <button id="themeBtn" class="theme-btn" type="button" title="切换主题">🌙</button>
+      </div>
     </div>
 
     <div class="board-wrap">
