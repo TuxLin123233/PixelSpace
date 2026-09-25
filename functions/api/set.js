@@ -14,6 +14,31 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
 }
 
+async function readHistory(kv) {
+  const raw = await kv.get('history')
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function entryPixels(e) {
+  return Array.isArray(e) ? e : e && e.pixels
+}
+
+function samePixels(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (!a[i] || !b[i] || a[i][0] !== b[i][0] || a[i][1] !== b[i][1] || a[i][2] !== b[i][2]) {
+      return false
+    }
+  }
+  return true
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context
 
@@ -42,24 +67,19 @@ export async function onRequestPost(context) {
     return json({ error: 'LIGHTFIELD_KV is not configured' }, 500)
   }
 
+  const history = await readHistory(env.LIGHTFIELD_KV)
+  if (history.some((e) => samePixels(entryPixels(e), pixels))) {
+    return json({ error: '内容重复，不能重复发布' }, 409)
+  }
+
   const entry = { name, pixels, time: Date.now() }
 
   try {
     await env.LIGHTFIELD_KV.put('pixels', JSON.stringify(entry))
 
-    const rawHistory = await env.LIGHTFIELD_KV.get('history')
-    let history = []
-    if (rawHistory) {
-      try {
-        history = JSON.parse(rawHistory)
-      } catch {
-        history = []
-      }
-    }
-    if (!Array.isArray(history)) history = []
-
-    history = [...history, entry].slice(-10)
-    await env.LIGHTFIELD_KV.put('history', JSON.stringify(history))
+    history.push(entry)
+    const nextHistory = history.slice(-10)
+    await env.LIGHTFIELD_KV.put('history', JSON.stringify(nextHistory))
   } catch (err) {
     return json({ error: 'KV write failed: ' + err.message }, 500)
   }
