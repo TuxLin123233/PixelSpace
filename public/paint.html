@@ -1095,14 +1095,38 @@
 
       /* ---------- 中途保存（localStorage） ---------- */
       const DRAFT_KEY = 'paintDraft'
+      const DRAFT_VERSION = 2
       let saveTimer
 
       function saveDraft() {
         try {
-          localStorage.setItem(DRAFT_KEY, JSON.stringify({ pixels, time: Date.now() }))
+          const flat = []
+          for (const row of pixels) {
+            for (const px of row) {
+              flat.push([px[0], px[1], px[2]])
+            }
+          }
+          localStorage.setItem(DRAFT_KEY, JSON.stringify({
+            v: DRAFT_VERSION,
+            pixels: flat,
+            time: Date.now()
+          }))
         } catch (err) {
           /* 存储失败可忽略 */
         }
+      }
+
+      function normalizePixel(px) {
+        if (!Array.isArray(px) || px.length < 3) return [255, 255, 255]
+        const r = Number(px[0])
+        const g = Number(px[1])
+        const b = Number(px[2])
+        if (![r, g, b].every(Number.isFinite)) return [255, 255, 255]
+        return [
+          Math.max(0, Math.min(255, Math.round(r))),
+          Math.max(0, Math.min(255, Math.round(g))),
+          Math.max(0, Math.min(255, Math.round(b))),
+        ]
       }
 
       function scheduleSave() {
@@ -1116,13 +1140,32 @@
           if (!raw) return false
           const data = JSON.parse(raw)
           if (!data || !Array.isArray(data.pixels)) return false
-          const flat = data.pixels
-          pixels = Array.from({ length: SIZE }, (_, y) =>
-            Array.from({ length: SIZE }, (_, x) => {
-              const px = flat[y * SIZE + x]
-              return px ? [px[0], px[1], px[2]] : [255, 255, 255]
-            })
+
+          const src = data.pixels
+          const out = Array.from({ length: SIZE }, () =>
+            Array.from({ length: SIZE }, () => [255, 255, 255])
           )
+
+          const isNested = Array.isArray(src[0]) && Array.isArray(src[0][0])
+          const isFlat = Array.isArray(src[0]) && typeof src[0][0] === 'number'
+
+          if (isNested) {
+            for (let y = 0; y < SIZE; y++) {
+              for (let x = 0; x < SIZE; x++) {
+                out[y][x] = normalizePixel(src[y] && src[y][x])
+              }
+            }
+          } else if (isFlat) {
+            for (let y = 0; y < SIZE; y++) {
+              for (let x = 0; x < SIZE; x++) {
+                out[y][x] = normalizePixel(src[y * SIZE + x])
+              }
+            }
+          } else {
+            return false
+          }
+
+          pixels = out
           redraw()
           return true
         } catch (err) {
@@ -1281,7 +1324,7 @@
         const name = resolveName()
 
         const flat = []
-        for (const row of pixels) for (const px of row) flat.push([px[0], px[1], px[2]])
+        for (const row of pixels) for (const px of row) flat.push(normalizePixel(px))
         const payload = { pixels: flat }
         if (name) payload.name = name
 
