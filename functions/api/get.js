@@ -66,6 +66,18 @@ export async function onRequestGet(context) {
     .filter((e) => Array.isArray(e.pixels))
     .reverse()
 
+  const single = url.searchParams.get('single') === '1'
+
+  if (single) {
+    const pool = history.length ? history : latest ? [latest] : []
+    const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null
+    return json(
+      pick
+        ? { pixels: pick.pixels, name: pick.name, time: pick.time, random: true }
+        : { pixels: null, name: null, time: null, random: false }
+    )
+  }
+
   const noNew = after !== null && latest && latest.time === after
 
   if (noNew) {
