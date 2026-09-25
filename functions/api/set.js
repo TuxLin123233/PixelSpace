@@ -64,7 +64,14 @@ export async function onRequestPost(context) {
   const bodyName = body && typeof body.name === 'string' ? body.name : ''
   const headerName = request.headers.get('X-Draw-Name')
   const queryName = new URL(request.url).searchParams.get('name')
-  const name = (bodyName || headerName || queryName || '').trim()
+  const legacyName = (bodyName || headerName || queryName || '').trim()
+
+  const rawWorkName = body && typeof body.workName === 'string' ? body.workName : ''
+  const rawAuthor = body && typeof body.author === 'string' ? body.author : ''
+
+  const workName = rawWorkName.trim().slice(0, 20)
+  const author = (rawAuthor || legacyName).trim().slice(0, 20) || '匿名'
+  const name = workName || author
 
   if (!env.LIGHTFIELD_KV) {
     return json({ error: 'LIGHTFIELD_KV is not configured' }, 500)
@@ -87,7 +94,7 @@ export async function onRequestPost(context) {
     return json({ error: '内容重复，不能重复发布' }, 409)
   }
 
-  const entry = { name, pixels, time: Date.now(), likes: 0 }
+  const entry = { name, workName, author, pixels, time: Date.now(), likes: 0 }
 
   try {
     await env.LIGHTFIELD_KV.put('pixels', JSON.stringify(entry))
@@ -99,5 +106,5 @@ export async function onRequestPost(context) {
     return json({ error: 'KV write failed: ' + err.message }, 500)
   }
 
-  return json({ ok: true, count: pixels.length, name, time: entry.time })
+  return json({ ok: true, count: pixels.length, name, workName, author, time: entry.time })
 }

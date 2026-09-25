@@ -241,10 +241,21 @@
         max-width: 96px;
       }
 
+      .f-meta {
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .f-author {
+        font-size: 10px;
+        color: var(--text-faint);
+      }
+
       .f-like {
         font-size: 10px;
         color: var(--like);
-        margin-top: 2px;
       }
 
       .gallery-grid {
@@ -301,6 +312,24 @@
       .card-name {
         font-weight: 600;
         word-break: break-all;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .card-sub {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 2px;
+        font-size: 11px;
+        color: var(--text-faint);
+      }
+
+      .card-author {
+        font-size: 11px;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -530,7 +559,7 @@
     <div class="preview-overlay" id="previewOverlay" hidden>
       <div class="preview-box">
         <div class="preview-head">
-          <span class="preview-title">作品预览</span>
+          <span class="preview-title" id="previewTitle">作品预览</span>
           <button class="preview-close" id="previewClose" type="button">关闭</button>
         </div>
         <canvas id="previewCanvas"></canvas>
@@ -729,13 +758,20 @@
 
             const nm = document.createElement('div')
             nm.className = 'f-name'
-            nm.textContent = w.name || '匿名'
+            nm.textContent = w.workName || w.name || '未命名'
 
-            const lk = document.createElement('div')
+            const metaRow = document.createElement('div')
+            metaRow.className = 'f-meta'
+            const au = document.createElement('span')
+            au.className = 'f-author'
+            au.textContent = w.author || '匿名'
+
+            const lk = document.createElement('span')
             lk.className = 'f-like'
             lk.textContent = '♥ ' + (w.likes || 0)
 
-            card.append(rank, cnv, nm, lk)
+            metaRow.append(au, lk)
+            card.append(rank, cnv, nm, metaRow)
             card.addEventListener('click', () => preview(w))
             featuredRow.appendChild(card)
           })
@@ -770,14 +806,20 @@
           meta.className = 'card-meta'
           const nm = document.createElement('span')
           nm.className = 'card-name'
-          nm.textContent = rec.name || '匿名'
+          nm.textContent = rec.workName || rec.name || '未命名'
           meta.append(nm, makeLikeButton(rec))
 
-          const tm = document.createElement('div')
+          const sub = document.createElement('div')
+          sub.className = 'card-sub'
+          const au = document.createElement('span')
+          au.className = 'card-author'
+          au.textContent = rec.author || (rec.workName ? '匿名' : rec.name || '匿名')
+          const tm = document.createElement('span')
           tm.className = 'card-time'
           tm.textContent = formatTime(rec.time)
 
-          card.append(c, meta, tm)
+          sub.append(au, tm)
+          card.append(c, meta, sub)
           card.addEventListener('click', () => preview(rec))
           card.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -882,7 +924,8 @@
         c.width = SIZE
         c.height = SIZE
         drawPixels(c, rec.pixels)
-        document.getElementById('previewAuthor').textContent = '作者：' + (rec.name || '匿名')
+        document.getElementById('previewTitle').textContent = rec.workName || rec.name || '未命名'
+        document.getElementById('previewAuthor').textContent = '作者：' + (rec.author || (rec.workName ? '匿名' : rec.name || '匿名'))
         document.getElementById('previewTime').textContent = formatTime(rec.time)
         document.getElementById('previewLikeCount').textContent = rec.likes || 0
         updateLikedState(document.getElementById('previewLike'), rec.time)

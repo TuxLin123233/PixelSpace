@@ -1020,8 +1020,13 @@
           await commitDraw()
           const payload = { pixels: flatPixels() }
           const title = (room.title || '').trim()
-          const name = title || nameInput.value.trim() || localStorage.getItem('paintName') || ''
-          if (name) payload.name = name
+          const members = room.members.map((m) => (m.name || '').trim()).filter(Boolean)
+          let author = members.join('、')
+          if (!author) {
+            author = nameInput.value.trim() || localStorage.getItem('paintName') || ''
+          }
+          if (title) payload.workName = title
+          payload.author = author || '匿名'
           const res = await fetch('/api/set', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -343,6 +343,15 @@
         text-align: center;
       }
 
+      .tile-meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        flex-wrap: wrap;
+        max-width: 100%;
+      }
+
       .tile-time {
         font-size: 10px;
         color: var(--text-faint);
@@ -415,10 +424,13 @@
         width: 100%;
         max-width: 460px;
         margin-top: 14px;
+        display: flex;
+        gap: 8px;
       }
 
       .name-row input {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
         height: 46px;
         border-radius: 14px;
         border: 2px solid var(--border-input);
@@ -829,7 +841,8 @@
     <a id="moreBtn" class="more-btn" href="gallery.html" hidden>查看更多作品 →</a>
 
     <div class="name-row">
-      <input id="nameInput" type="text" placeholder="你的名字（上传时绑定到作品，可留空匿名）" maxlength="20">
+      <input id="titleInput" type="text" placeholder="作品名（给这幅画起个名字，可留空）" maxlength="20">
+      <input id="nameInput" type="text" placeholder="作者名（画这幅画的人，可留空匿名）" maxlength="20">
     </div>
 
     <div class="actions">
@@ -867,7 +880,7 @@
     <div class="preview-overlay" id="previewOverlay" hidden>
       <div class="preview-box">
         <div class="preview-head">
-          <span class="preview-title">作品预览</span>
+          <span class="preview-title" id="previewTitle">作品预览</span>
           <button class="preview-close" id="previewClose" type="button">关闭</button>
         </div>
         <canvas id="previewCanvas"></canvas>
@@ -1367,7 +1380,8 @@
         if (document.hidden) saveDraft()
       })
 
-      /* ---------- 名字与历史记录 ---------- */
+      /* ---------- 作品名与作者名 ---------- */
+      const titleInput = document.getElementById('titleInput')
       const nameInput = document.getElementById('nameInput')
 
       function readCookie(name) {
@@ -1384,15 +1398,16 @@
         })
       }
 
-      function resolveName() {
+      function resolveAuthor() {
         let name = nameInput.value.trim()
-        if (name) return name
-        const typed = window.prompt('未填写名字：输入你的名字后确定；直接确定或取消将匿名上传。')
-        if (typed !== null) {
-          name = typed.trim()
-          if (name) {
-            nameInput.value = name
-            localStorage.setItem('paintName', name)
+        if (!name) {
+          const typed = window.prompt('未填写作者名：输入你的名字后确定；直接确定或取消将匿名上传。')
+          if (typed !== null) {
+            name = typed.trim()
+            if (name) {
+              nameInput.value = name
+              localStorage.setItem('paintName', name)
+            }
           }
         }
         return name
@@ -1489,7 +1504,11 @@
           const meta = document.createElement('div')
           meta.className = 'tile-meta'
           const nm = document.createElement('span')
-          nm.textContent = rec.name || '匿名'
+          nm.textContent = rec.workName || rec.name || '未命名'
+          const metaRow = document.createElement('span')
+          metaRow.className = 'tile-meta-row'
+          const au = document.createElement('span')
+          au.textContent = rec.author || rec.name || '匿名'
           const tm = document.createElement('span')
           tm.className = 'tile-time'
           tm.textContent = formatTime(rec.time)
@@ -1502,7 +1521,8 @@
             likeWork(rec, likeBadge)
           })
 
-          meta.append(nm, tm, likeBadge)
+          metaRow.append(au, tm, likeBadge)
+          meta.append(nm, metaRow)
 
           if (mineSet.has(String(rec.time))) {
             const loadBtn = document.createElement('span')
@@ -1535,7 +1555,8 @@
             tc.fillRect(x, y, 1, 1)
           }
         }
-        document.getElementById('previewAuthor').textContent = '作者：' + (rec.name || '匿名')
+        document.getElementById('previewTitle').textContent = rec.workName || rec.name || '未命名'
+        document.getElementById('previewAuthor').textContent = '作者：' + (rec.author || rec.name || '匿名')
         document.getElementById('previewTime').textContent = formatTime(rec.time)
         previewOverlay.hidden = false
       }
@@ -1570,12 +1591,14 @@
 
       const uploadBtn = document.getElementById('uploadBtn')
       uploadBtn.addEventListener('click', async () => {
-        const name = resolveName()
+        const author = resolveAuthor()
 
         const flat = []
         for (const row of pixels) for (const px of row) flat.push(normalizePixel(px))
         const payload = { pixels: flat }
-        if (name) payload.name = name
+        if (author) payload.author = author
+        const workName = titleInput.value.trim()
+        if (workName) payload.workName = workName
 
         uploadBtn.disabled = true
         try {
@@ -1587,7 +1610,7 @@
           const data = await res.json().catch(() => ({}))
           if (res.ok) {
             if (data.time) addMine(data.time)
-            toast('上传成功' + (data.name ? '：' + data.name : '（匿名）'))
+            toast('发布「' + (data.workName || '未命名') + '」成功')
             fetchRecords()
           } else {
             toast('上传失败：' + (data.error || res.status))

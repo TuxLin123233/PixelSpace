@@ -95,6 +95,8 @@ export async function onRequestGet(context) {
     .map((e) => ({
       pixels: e.pixels,
       name: e.name || '',
+      workName: e.workName || '',
+      author: e.author || '',
       time: e.time || 0,
       likes: e.likes || 0,
     }))

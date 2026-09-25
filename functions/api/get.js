@@ -12,8 +12,15 @@ const json = (body, status = 200) =>
 
 function normalizeEntry(e) {
   return Array.isArray(e)
-    ? { name: '', pixels: e, time: 0, likes: 0 }
-    : { name: (e && e.name) || '', pixels: e && e.pixels, time: (e && e.time) || 0, likes: (e && e.likes) || 0 }
+    ? { name: '', workName: '', author: '', pixels: e, time: 0, likes: 0 }
+    : {
+        name: (e && e.name) || '',
+        workName: (e && e.workName) || '',
+        author: (e && e.author) || '',
+        pixels: e && e.pixels,
+        time: (e && e.time) || 0,
+        likes: (e && e.likes) || 0,
+      }
 }
 
 export async function onRequestOptions() {
@@ -88,7 +95,7 @@ export async function onRequestGet(context) {
     const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null
     return json(
       pick
-        ? { pixels: pick.pixels, name: pick.name, time: pick.time, likes: pick.likes || 0, random: true }
+        ? { pixels: pick.pixels, name: pick.name, workName: pick.workName, author: pick.author, time: pick.time, likes: pick.likes || 0, random: true }
         : { pixels: null, name: null, time: null, likes: 0, random: false }
     )
   }
@@ -98,12 +105,14 @@ export async function onRequestGet(context) {
   if (noNew) {
     const pool = history.filter((e) => e.time !== latest.time)
     const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : latest
-    return json({ pixels: pick.pixels, name: pick.name, time: pick.time, likes: pick.likes || 0, history: slicedHistory, total, random: true })
+    return json({ pixels: pick.pixels, name: pick.name, workName: pick.workName, author: pick.author, time: pick.time, likes: pick.likes || 0, history: slicedHistory, total, random: true })
   }
 
   return json({
     pixels: latest ? latest.pixels : null,
     name: latest ? latest.name : null,
+    workName: latest ? latest.workName : null,
+    author: latest ? latest.author : null,
     time: latest ? latest.time : null,
     likes: latest ? latest.likes || 0 : 0,
     history: slicedHistory,
