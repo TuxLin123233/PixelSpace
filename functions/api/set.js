@@ -39,6 +39,20 @@ export async function onRequestPost(context) {
 
   try {
     await env.LIGHTFIELD_KV.put('pixels', JSON.stringify(pixels))
+
+    const rawHistory = await env.LIGHTFIELD_KV.get('history')
+    let history = []
+    if (rawHistory) {
+      try {
+        history = JSON.parse(rawHistory)
+      } catch {
+        history = []
+      }
+    }
+    if (!Array.isArray(history)) history = []
+
+    history = [...history, pixels].slice(-10)
+    await env.LIGHTFIELD_KV.put('history', JSON.stringify(history))
   } catch (err) {
     return json({ error: 'KV write failed: ' + err.message }, 500)
   }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>像素画板</title>
+    <title>光域画板</title>
     <style>
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -33,23 +33,45 @@
         border-radius: 20px;
         box-shadow: 0 10px 30px rgba(80, 60, 40, 0.15);
         padding: 12px;
-        touch-action: pan-y;
       }
 
       #board {
         display: block;
         width: 100%;
         aspect-ratio: 1;
-        border-radius: 12px;
         touch-action: none;
         cursor: crosshair;
         background: #fff;
       }
 
+      .tools {
+        width: 100%;
+        max-width: 460px;
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .tool {
+        flex: 1;
+        height: 46px;
+        border-radius: 999px;
+        background: #fff;
+        color: #6b5f50;
+        font-size: 15px;
+        font-weight: 600;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+      }
+
+      .tool.active {
+        background: #3b342c;
+        color: #fff;
+      }
+
       .palette {
         width: 100%;
         max-width: 460px;
-        margin-top: 18px;
+        margin-top: 14px;
         background: #fff;
         border-radius: 20px;
         box-shadow: 0 6px 20px rgba(80, 60, 40, 0.10);
@@ -64,8 +86,9 @@
       }
 
       .swatch {
-        width: 44px;
-        height: 44px;
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         border: 2px solid rgba(0, 0, 0, 0.08);
         cursor: pointer;
@@ -79,6 +102,24 @@
         transform: scale(1.08);
       }
 
+      .swatch.custom {
+        position: relative;
+        background: conic-gradient(red, orange, yellow, green, cyan, blue, magenta, red);
+        overflow: hidden;
+      }
+
+      .swatch.custom input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        opacity: 0;
+        cursor: pointer;
+      }
+
       .actions {
         width: 100%;
         max-width: 460px;
@@ -87,20 +128,14 @@
         margin-top: 18px;
       }
 
-      button {
+      .actions button {
         flex: 1;
         height: 52px;
-        border: none;
         border-radius: 16px;
         font-size: 17px;
         font-weight: 600;
-        cursor: pointer;
         transition: transform 0.12s ease, opacity 0.15s ease;
-        touch-action: manipulation;
       }
-
-      button:active { transform: scale(0.96); }
-      button:disabled { opacity: 0.55; cursor: not-allowed; }
 
       #clearBtn {
         background: #efe9e0;
@@ -137,14 +172,24 @@
         font-size: 13px;
         color: #9a8c7a;
         text-align: center;
+        min-height: 18px;
       }
+
+      button:active { transform: scale(0.96); }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
     </style>
   </head>
   <body>
-    <h1>像素画板</h1>
+    <h1>光域画板</h1>
 
     <div class="board-wrap">
       <canvas id="board" width="512" height="512"></canvas>
+    </div>
+
+    <div class="tools">
+      <button id="toolBrush" class="tool active" type="button" data-tool="brush">画笔</button>
+      <button id="toolEraser" class="tool" type="button" data-tool="eraser">橡皮擦</button>
+      <button id="toolFill" class="tool" type="button" data-tool="fill">颜料桶</button>
     </div>
 
     <div class="palette">
@@ -156,7 +201,7 @@
       <button id="uploadBtn" type="button">上传</button>
     </div>
 
-    <div class="hint">手指点按或滑动即可作画</div>
+    <div class="hint" id="hint">画笔：点按或滑动作画</div>
     <div id="toast"></div>
 
     <script>
@@ -172,19 +217,27 @@
         ['#ffffff', '白'],
         ['#212121', '黑'],
       ]
+      const TOOL_HINTS = {
+        brush: '画笔：点按或滑动作画',
+        eraser: '橡皮擦：点按或滑动擦除为白色',
+        fill: '颜料桶：点一下区域即可填充当前颜色',
+      }
 
       const canvas = document.getElementById('board')
       const ctx = canvas.getContext('2d')
-      const CELL = canvas.width / SIZE
 
       const dpr = window.devicePixelRatio || 1
-      canvas.width = canvas.height = canvas.width * dpr
+      canvas.width = canvas.height = 512 * dpr
       ctx.scale(dpr, dpr)
+      const CELL = 512 / SIZE
 
       let pixels = Array.from({ length: SIZE }, () =>
         Array.from({ length: SIZE }, () => [255, 255, 255])
       )
       let currentColor = [229, 57, 53]
+      let activeTool = 'brush'
+
+      const hint = document.getElementById('hint')
 
       const paletteRow = document.getElementById('paletteRow')
       const swatches = COLORS.map(([hex]) => {
@@ -197,6 +250,23 @@
         paletteRow.appendChild(sw)
         return sw
       })
+
+      const customSwatch = document.createElement('label')
+      customSwatch.className = 'swatch custom'
+      customSwatch.title = '自定义颜色'
+      const colorInput = document.createElement('input')
+      colorInput.type = 'color'
+      colorInput.value = '#e53935'
+      customSwatch.appendChild(colorInput)
+      paletteRow.appendChild(customSwatch)
+
+      colorInput.addEventListener('input', () => {
+        currentColor = hexToRgb(colorInput.value)
+        customSwatch.style.background = colorInput.value
+        swatches.forEach((s) => s.classList.remove('selected'))
+        customSwatch.classList.add('selected')
+      })
+
       selectColor(swatches[0])
 
       function hexToRgb(hex) {
@@ -206,8 +276,23 @@
 
       function selectColor(sw) {
         swatches.forEach((s) => s.classList.remove('selected'))
+        customSwatch.classList.remove('selected')
         sw.classList.add('selected')
         currentColor = JSON.parse(sw.dataset.rgb)
+      }
+
+      document.querySelectorAll('.tool').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          setTool(btn.dataset.tool)
+        })
+      })
+
+      function setTool(tool) {
+        activeTool = tool
+        document.querySelectorAll('.tool').forEach((b) =>
+          b.classList.toggle('active', b.dataset.tool === tool)
+        )
+        hint.textContent = TOOL_HINTS[tool]
       }
 
       function drawGrid() {
@@ -217,17 +302,17 @@
           const p = i * CELL + 0.5
           ctx.beginPath()
           ctx.moveTo(p, 0)
-          ctx.lineTo(p, canvas.height)
+          ctx.lineTo(p, 512)
           ctx.stroke()
           ctx.beginPath()
           ctx.moveTo(0, p)
-          ctx.lineTo(canvas.width, p)
+          ctx.lineTo(512, p)
           ctx.stroke()
         }
       }
 
       function redraw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.clearRect(0, 0, 512, 512)
         for (let y = 0; y < SIZE; y++) {
           for (let x = 0; x < SIZE; x++) {
             const [r, g, b] = pixels[y][x]
@@ -245,9 +330,33 @@
         return { row: Math.max(0, Math.min(SIZE - 1, row)), col: Math.max(0, Math.min(SIZE - 1, col)) }
       }
 
+      function sameColor(a, b) {
+        return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
+      }
+
+      function floodFill(row, col) {
+        const target = pixels[row][col]
+        if (sameColor(target, currentColor)) return
+        const stack = [[row, col]]
+        while (stack.length) {
+          const [r, c] = stack.pop()
+          if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) continue
+          const px = pixels[r][c]
+          if (!sameColor(px, target)) continue
+          pixels[r][c] = currentColor.slice()
+          stack.push([r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1])
+        }
+        redraw()
+      }
+
       function paint(e) {
         const { row, col } = cellFromEvent(e)
-        pixels[row][col] = currentColor.slice()
+        if (activeTool === 'fill') {
+          floodFill(row, col)
+          return
+        }
+        const color = activeTool === 'eraser' ? [255, 255, 255] : currentColor
+        pixels[row][col] = color.slice()
         redraw()
       }
 
@@ -259,7 +368,7 @@
         paint(e)
       })
       canvas.addEventListener('pointermove', (e) => {
-        if (painting) paint(e)
+        if (painting && activeTool !== 'fill') paint(e)
       })
       const stop = () => (painting = false)
       canvas.addEventListener('pointerup', stop)

@@ -31,5 +31,16 @@ export async function onRequestGet(context) {
     }
   }
 
-  return json({ pixels })
+  const rawHistory = await env.LIGHTFIELD_KV.get('history')
+  let history = []
+  if (rawHistory) {
+    try {
+      history = JSON.parse(rawHistory)
+    } catch {
+      history = []
+    }
+  }
+  if (!Array.isArray(history)) history = []
+
+  return json({ pixels, history })
 }
