@@ -17,6 +17,10 @@ export async function onRequestOptions() {
 export async function onRequestGet(context) {
   const { env } = context
 
+  if (!env.LIGHTFIELD_KV) {
+    return json({ pixels: null, message: 'LIGHTFIELD_KV is not configured' })
+  }
+
   const raw = await env.LIGHTFIELD_KV.get('pixels')
   let pixels = null
   if (raw) {

@@ -24,9 +24,13 @@ export async function onRequestPost(context) {
     return json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const pixels = Array.isArray(body) ? body : body.pixels
+  const pixels = Array.isArray(body) ? body : body && body.pixels
   if (!Array.isArray(pixels) || pixels.length !== 256) {
     return json({ error: 'pixels 必须是长度为 256 的数组' }, 400)
+  }
+
+  if (!env.LIGHTFIELD_KV) {
+    return json({ error: 'LIGHTFIELD_KV is not configured' }, 500)
   }
 
   try {
