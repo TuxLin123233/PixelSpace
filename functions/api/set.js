@@ -25,8 +25,12 @@ export async function onRequestPost(context) {
   }
 
   const pixels = Array.isArray(body) ? body : body && body.pixels
-  if (!Array.isArray(pixels) || pixels.length !== 256) {
-    return json({ error: 'pixels 必须是长度为 256 的数组' }, 400)
+  const isValid =
+    Array.isArray(pixels) &&
+    pixels.length === 256 &&
+    pixels.every((p) => Array.isArray(p) && p.length === 3)
+  if (!isValid) {
+    return json({ error: 'pixels 必须是 256×3 的二维数组（每个元素是 [r,g,b]）' }, 400)
   }
 
   if (!env.LIGHTFIELD_KV) {
