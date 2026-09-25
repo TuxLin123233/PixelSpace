@@ -1231,16 +1231,16 @@
 
       function previewRecord(rec) {
         const c = document.getElementById('previewCanvas')
-        c.width = 16 * dpr
-        c.height = 16 * dpr
+        c.width = 16
+        c.height = 16
         const tc = c.getContext('2d')
-        tc.clearRect(0, 0, 16 * dpr, 16 * dpr)
+        tc.clearRect(0, 0, 16, 16)
         for (let y = 0; y < 16; y++) {
           for (let x = 0; x < 16; x++) {
             const px = rec.pixels[y * 16 + x]
             if (!px) continue
             tc.fillStyle = `rgb(${px[0]}, ${px[1]}, ${px[2]})`
-            tc.fillRect(x * dpr, y * dpr, dpr, dpr)
+            tc.fillRect(x, y, 1, 1)
           }
         }
         document.getElementById('previewAuthor').textContent = '作者：' + (rec.name || '匿名')
