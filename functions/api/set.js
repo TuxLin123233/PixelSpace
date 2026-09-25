@@ -10,6 +10,8 @@ const json = (body, status = 200) =>
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
 
+const HISTORY_MAX = 100
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
 }
@@ -78,7 +80,7 @@ export async function onRequestPost(context) {
     await env.LIGHTFIELD_KV.put('pixels', JSON.stringify(entry))
 
     history.push(entry)
-    const nextHistory = history.slice(-10)
+    const nextHistory = history.slice(-HISTORY_MAX)
     await env.LIGHTFIELD_KV.put('history', JSON.stringify(nextHistory))
   } catch (err) {
     return json({ error: 'KV write failed: ' + err.message }, 500)

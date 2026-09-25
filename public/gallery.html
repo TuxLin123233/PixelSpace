@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="光域画板 · 全部作品">
+    <title>全部作品 · 光域画板</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        background: #faf5ef;
+        color: #3b342c;
+        min-height: 100vh;
+        padding: 24px 16px 40px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .back {
+        flex: 0 0 auto;
+        font-size: 14px;
+        font-weight: 600;
+        color: #6b5f50;
+        text-decoration: none;
+        background: #fff;
+        border: 2px solid #efe7da;
+        border-radius: 999px;
+        padding: 8px 16px;
+        transition: border-color 0.2s;
+      }
+
+      .back:hover { border-color: #e0d3c0; }
+
+      .header-text { flex: 1; min-width: 0; }
+
+      .header-text h1 {
+        font-size: 20px;
+        font-weight: 800;
+        color: #3b342c;
+      }
+
+      #count {
+        font-size: 13px;
+        color: #b0a697;
+        margin-top: 4px;
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: #fff;
+        border: none;
+        border-radius: 16px;
+        padding: 10px;
+        box-shadow: 0 4px 14px rgba(80, 60, 40, 0.08);
+        cursor: pointer;
+        text-align: left;
+        transition: transform 0.1s ease, box-shadow 0.2s ease;
+      }
+
+      .card:hover { box-shadow: 0 8px 22px rgba(80, 60, 40, 0.14); }
+      .card:active { transform: scale(0.97); }
+
+      .art {
+        width: 100%;
+        aspect-ratio: 1;
+        image-rendering: pixelated;
+        border-radius: 10px;
+        border: 2px solid rgba(0, 0, 0, 0.06);
+        background: #fff;
+        display: block;
+      }
+
+      .card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #6b5f50;
+      }
+
+      .card-name {
+        font-weight: 600;
+        word-break: break-all;
+        min-width: 0;
+      }
+
+      .card-time {
+        flex: 0 0 auto;
+        font-size: 10px;
+        color: #b0a697;
+      }
+
+      .status {
+        text-align: center;
+        color: #b0a697;
+        font-size: 14px;
+        padding: 40px 0;
+      }
+
+      .retry {
+        margin-top: 12px;
+        padding: 8px 20px;
+        border: 2px solid #efe7da;
+        background: #fff;
+        color: #6b5f50;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .disclaimer {
+        margin-top: 28px;
+        padding: 14px 16px;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(80, 60, 40, 0.08);
+        font-size: 12px;
+        line-height: 1.7;
+        color: #b0a697;
+        text-align: justify;
+      }
+
+      .disclaimer-report {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #f0ece4;
+        color: #8c7f6b;
+      }
+
+      .copyright {
+        margin-top: 16px;
+        text-align: center;
+        font-size: 12px;
+        color: #c4b9a8;
+      }
+
+      .preview-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        background: rgba(20, 15, 10, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .preview-overlay[hidden] { display: none; }
+
+      .preview-box {
+        width: 100%;
+        max-width: 380px;
+        background: #fff;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        text-align: center;
+      }
+
+      .preview-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .preview-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #3b342c;
+      }
+
+      .preview-close {
+        border: none;
+        background: #efe9e0;
+        color: #6b5f50;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      #previewCanvas {
+        width: 220px;
+        height: 220px;
+        image-rendering: pixelated;
+        border-radius: 12px;
+        border: 2px solid rgba(0, 0, 0, 0.08);
+        background: #fff;
+        margin: 0 auto;
+        display: block;
+      }
+
+      .preview-info {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #3b342c;
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .preview-time {
+        font-size: 12px;
+        color: #b0a697;
+        font-weight: 400;
+      }
+
+      .preview-note {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #f0ece4;
+        font-size: 12px;
+        color: #b0a697;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <a class="back" href="/paint">← 返回画板</a>
+        <div class="header-text">
+          <h1>全部作品</h1>
+          <div id="count">加载中…</div>
+        </div>
+      </div>
+
+      <div id="gallery" class="gallery-grid"></div>
+      <div id="status" class="status" hidden></div>
+
+      <div class="disclaimer">
+        以下作品均来自全网上传。全部作品仅支持预览，不可载入作画，请尊重原作者，切勿抄袭或直接提交他人作品。
+        本画板仅用于个人学习与技术交流，上传者须对自己发布的内容负全部法律责任。
+        <div class="disclaimer-report">发现违规内容？请联系微信 Tux123233 或邮箱 linsifan123233@petalmail.com 举报。</div>
+      </div>
+      <div class="copyright">© 2026 光域画板 · 版权所有 · 作者 Lin Sifan</div>
+    </div>
+
+    <div class="preview-overlay" id="previewOverlay" hidden>
+      <div class="preview-box">
+        <div class="preview-head">
+          <span class="preview-title">作品预览</span>
+          <button class="preview-close" id="previewClose" type="button">关闭</button>
+        </div>
+        <canvas id="previewCanvas"></canvas>
+        <div class="preview-info">
+          <span id="previewAuthor"></span>
+          <span id="previewTime" class="preview-time"></span>
+        </div>
+        <div class="preview-note">仅支持预览，不可载入作画。请勿抄袭或直接提交他人的作品。</div>
+      </div>
+    </div>
+
+    <script>
+      const SIZE = 16
+
+      const gallery = document.getElementById('gallery')
+      const statusEl = document.getElementById('status')
+      const countEl = document.getElementById('count')
+
+      function formatTime(ts) {
+        if (!ts) return ''
+        const d = new Date(ts)
+        return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      }
+
+      function showStatus(text, withRetry) {
+        statusEl.hidden = false
+        statusEl.textContent = text
+        if (withRetry) {
+          const btn = document.createElement('button')
+          btn.type = 'button'
+          btn.className = 'retry'
+          btn.textContent = '重试'
+          btn.addEventListener('click', load)
+          statusEl.append(document.createElement('br'), btn)
+        }
+      }
+
+      function drawPixels(canvas, pixels) {
+        const c = canvas.getContext('2d')
+        c.clearRect(0, 0, SIZE, SIZE)
+        for (let y = 0; y < SIZE; y++) {
+          for (let x = 0; x < SIZE; x++) {
+            const px = pixels[y * SIZE + x]
+            if (!px) continue
+            c.fillStyle = `rgb(${px[0]}, ${px[1]}, ${px[2]})`
+            c.fillRect(x, y, 1, 1)
+          }
+        }
+      }
+
+      function render(records) {
+        gallery.innerHTML = ''
+        countEl.textContent = `共 ${records.length} 件作品`
+        if (!records.length) {
+          statusEl.hidden = false
+          statusEl.textContent = '还没有作品，快去画板上传第一幅吧'
+          return
+        }
+        records.forEach((rec) => {
+          const card = document.createElement('button')
+          card.type = 'button'
+          card.className = 'card'
+          card.title = '点击预览'
+
+          const c = document.createElement('canvas')
+          c.width = SIZE
+          c.height = SIZE
+          c.className = 'art'
+          drawPixels(c, rec.pixels)
+
+          const meta = document.createElement('div')
+          meta.className = 'card-meta'
+          const nm = document.createElement('span')
+          nm.className = 'card-name'
+          nm.textContent = rec.name || '匿名'
+          const tm = document.createElement('span')
+          tm.className = 'card-time'
+          tm.textContent = formatTime(rec.time)
+          meta.append(nm, tm)
+
+          card.append(c, meta)
+          card.addEventListener('click', () => preview(rec))
+          gallery.appendChild(card)
+        })
+      }
+
+      async function load() {
+        gallery.innerHTML = ''
+        statusEl.hidden = true
+        countEl.textContent = '加载中…'
+        try {
+          const res = await fetch('/api/get')
+          if (!res.ok) throw new Error('HTTP ' + res.status)
+          const data = await res.json()
+          render(data.history || [])
+        } catch (err) {
+          showStatus('加载失败，请检查网络后重试', true)
+        }
+      }
+
+      /* ---------- 预览弹窗 ---------- */
+      const previewOverlay = document.getElementById('previewOverlay')
+
+      function preview(rec) {
+        const c = document.getElementById('previewCanvas')
+        c.width = SIZE
+        c.height = SIZE
+        drawPixels(c, rec.pixels)
+        document.getElementById('previewAuthor').textContent = '作者：' + (rec.name || '匿名')
+        document.getElementById('previewTime').textContent = formatTime(rec.time)
+        previewOverlay.hidden = false
+      }
+
+      function closePreview() {
+        previewOverlay.hidden = true
+      }
+
+      document.getElementById('previewClose').addEventListener('click', closePreview)
+      previewOverlay.addEventListener('click', (e) => {
+        if (e.target === previewOverlay) closePreview()
+      })
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePreview()
+      })
+
+      load()
+    </script>
+  </body>
+</html>

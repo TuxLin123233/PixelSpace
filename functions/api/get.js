@@ -68,6 +68,12 @@ export async function onRequestGet(context) {
 
   const single = url.searchParams.get('single') === '1'
 
+  const total = history.length
+  const limitParam = Number(url.searchParams.get('limit'))
+  const limit =
+    Number.isFinite(limitParam) && limitParam > 0 ? Math.floor(limitParam) : null
+  const slicedHistory = limit ? history.slice(0, limit) : history
+
   if (single) {
     const pool = history.length ? history : latest ? [latest] : []
     const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null
@@ -83,14 +89,15 @@ export async function onRequestGet(context) {
   if (noNew) {
     const pool = history.filter((e) => e.time !== latest.time)
     const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : latest
-    return json({ pixels: pick.pixels, name: pick.name, time: pick.time, history, random: true })
+    return json({ pixels: pick.pixels, name: pick.name, time: pick.time, history: slicedHistory, total, random: true })
   }
 
   return json({
     pixels: latest ? latest.pixels : null,
     name: latest ? latest.name : null,
     time: latest ? latest.time : null,
-    history,
+    history: slicedHistory,
+    total,
     random: false,
   })
 }
