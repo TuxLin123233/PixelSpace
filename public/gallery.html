@@ -117,6 +117,8 @@
         padding: 40px 0;
       }
 
+      #sentinel { cursor: pointer; }
+
       .retry {
         margin-top: 12px;
         padding: 8px 20px;
@@ -250,6 +252,7 @@
       </div>
 
       <div id="gallery" class="gallery-grid"></div>
+      <div id="sentinel" class="status">加载中…</div>
       <div id="status" class="status" hidden></div>
 
       <div class="disclaimer">
@@ -314,14 +317,13 @@
         }
       }
 
-      function render(records) {
-        gallery.innerHTML = ''
-        countEl.textContent = `共 ${records.length} 件作品`
-        if (!records.length) {
-          statusEl.hidden = false
-          statusEl.textContent = '还没有作品，快去画板上传第一幅吧'
-          return
-        }
+      const sentinel = document.getElementById('sentinel')
+      const PAGE = 24
+      let offset = 0
+      let done = false
+      let loading = false
+
+      function appendCards(records) {
         records.forEach((rec) => {
           const card = document.createElement('button')
           card.type = 'button'
@@ -350,19 +352,53 @@
         })
       }
 
-      async function load() {
-        gallery.innerHTML = ''
-        statusEl.hidden = true
-        countEl.textContent = '加载中…'
+      async function loadMore() {
+        if (loading || done) return
+        loading = true
+        sentinel.textContent = '加载中…'
         try {
-          const res = await fetch('/api/get')
+          const res = await fetch(`/api/get?limit=${PAGE}&offset=${offset}`)
           if (!res.ok) throw new Error('HTTP ' + res.status)
           const data = await res.json()
-          render(data.history || [])
+          const list = data.history || []
+
+          if (offset === 0 && !list.length) {
+            countEl.textContent = '共 0 件作品'
+            sentinel.hidden = true
+            showStatus('还没有作品，快去画板上传第一幅吧')
+            return
+          }
+
+          appendCards(list)
+          offset += list.length
+          countEl.textContent = `共 ${data.total != null ? data.total : offset} 件作品`
+
+          if (!list.length || (data.total != null && offset >= data.total)) {
+            done = true
+            sentinel.textContent = '已经到底啦'
+          } else {
+            sentinel.textContent = ''
+          }
         } catch (err) {
-          showStatus('加载失败，请检查网络后重试', true)
+          sentinel.textContent = '加载失败，点此重试'
+        } finally {
+          loading = false
         }
       }
+
+      sentinel.addEventListener('click', () => {
+        if (sentinel.textContent.startsWith('加载失败')) loadMore()
+      })
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) loadMore()
+        },
+        { rootMargin: '150px' }
+      )
+      io.observe(sentinel)
+
+      loadMore()
 
       /* ---------- 预览弹窗 ---------- */
       const previewOverlay = document.getElementById('previewOverlay')

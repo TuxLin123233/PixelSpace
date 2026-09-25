@@ -72,7 +72,10 @@ export async function onRequestGet(context) {
   const limitParam = Number(url.searchParams.get('limit'))
   const limit =
     Number.isFinite(limitParam) && limitParam > 0 ? Math.floor(limitParam) : null
-  const slicedHistory = limit ? history.slice(0, limit) : history
+  const offsetParam = Number(url.searchParams.get('offset'))
+  const offset =
+    Number.isFinite(offsetParam) && offsetParam > 0 ? Math.floor(offsetParam) : 0
+  const slicedHistory = limit ? history.slice(offset, offset + limit) : history
 
   if (single) {
     const pool = history.length ? history : latest ? [latest] : []
