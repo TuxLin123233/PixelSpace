@@ -4,10 +4,12 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
+const CACHE_CONTROL = 'public, s-maxage=10, stale-while-revalidate=5'
+
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': CACHE_CONTROL },
   })
 
 function normalizeEntry(e) {
