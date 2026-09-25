@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-hans">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>像素画板</title>
+    <style>
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(160deg, #fdf8f2 0%, #f2ece2 100%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px 16px 40px;
+      }
+
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #3b342c;
+        margin: 8px 0 16px;
+        letter-spacing: 1px;
+      }
+
+      .board-wrap {
+        width: 100%;
+        max-width: 460px;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(80, 60, 40, 0.15);
+        padding: 12px;
+        touch-action: pan-y;
+      }
+
+      #board {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 12px;
+        touch-action: none;
+        cursor: crosshair;
+        background: #fff;
+      }
+
+      .palette {
+        width: 100%;
+        max-width: 460px;
+        margin-top: 18px;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 6px 20px rgba(80, 60, 40, 0.10);
+        padding: 16px;
+      }
+
+      .palette-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .swatch {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+      }
+
+      .swatch:active { transform: scale(0.9); }
+
+      .swatch.selected {
+        box-shadow: 0 0 0 3px #fff, 0 0 0 6px #5b8def;
+        transform: scale(1.08);
+      }
+
+      .actions {
+        width: 100%;
+        max-width: 460px;
+        display: flex;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      button {
+        flex: 1;
+        height: 52px;
+        border: none;
+        border-radius: 16px;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.12s ease, opacity 0.15s ease;
+        touch-action: manipulation;
+      }
+
+      button:active { transform: scale(0.96); }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+      #clearBtn {
+        background: #efe9e0;
+        color: #6b5f50;
+      }
+
+      #uploadBtn {
+        background: #5b8def;
+        color: #fff;
+      }
+
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 32px;
+        transform: translate(-50%, 16px);
+        background: #3b342c;
+        color: #fff;
+        padding: 12px 22px;
+        border-radius: 999px;
+        font-size: 15px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+        max-width: 86vw;
+        text-align: center;
+      }
+
+      #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      .hint {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #9a8c7a;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>像素画板</h1>
+
+    <div class="board-wrap">
+      <canvas id="board" width="512" height="512"></canvas>
+    </div>
+
+    <div class="palette">
+      <div id="paletteRow" class="palette-row"></div>
+    </div>
+
+    <div class="actions">
+      <button id="clearBtn" type="button">清空</button>
+      <button id="uploadBtn" type="button">上传</button>
+    </div>
+
+    <div class="hint">手指点按或滑动即可作画</div>
+    <div id="toast"></div>
+
+    <script>
+      const SIZE = 16
+      const COLORS = [
+        ['#e53935', '红'],
+        ['#fb8c00', '橙'],
+        ['#fdd835', '黄'],
+        ['#43a047', '绿'],
+        ['#00acc1', '青'],
+        ['#1e88e5', '蓝'],
+        ['#8e24aa', '紫'],
+        ['#ffffff', '白'],
+        ['#212121', '黑'],
+      ]
+
+      const canvas = document.getElementById('board')
+      const ctx = canvas.getContext('2d')
+      const CELL = canvas.width / SIZE
+
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = canvas.height = canvas.width * dpr
+      ctx.scale(dpr, dpr)
+
+      let pixels = Array.from({ length: SIZE }, () =>
+        Array.from({ length: SIZE }, () => [255, 255, 255])
+      )
+      let currentColor = [229, 57, 53]
+
+      const paletteRow = document.getElementById('paletteRow')
+      const swatches = COLORS.map(([hex]) => {
+        const sw = document.createElement('button')
+        sw.type = 'button'
+        sw.className = 'swatch'
+        sw.style.background = hex
+        sw.dataset.rgb = JSON.stringify(hexToRgb(hex))
+        sw.addEventListener('click', () => selectColor(sw))
+        paletteRow.appendChild(sw)
+        return sw
+      })
+      selectColor(swatches[0])
+
+      function hexToRgb(hex) {
+        const h = hex.replace('#', '')
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+      }
+
+      function selectColor(sw) {
+        swatches.forEach((s) => s.classList.remove('selected'))
+        sw.classList.add('selected')
+        currentColor = JSON.parse(sw.dataset.rgb)
+      }
+
+      function drawGrid() {
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.10)'
+        ctx.lineWidth = 1
+        for (let i = 0; i <= SIZE; i++) {
+          const p = i * CELL + 0.5
+          ctx.beginPath()
+          ctx.moveTo(p, 0)
+          ctx.lineTo(p, canvas.height)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(0, p)
+          ctx.lineTo(canvas.width, p)
+          ctx.stroke()
+        }
+      }
+
+      function redraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        for (let y = 0; y < SIZE; y++) {
+          for (let x = 0; x < SIZE; x++) {
+            const [r, g, b] = pixels[y][x]
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
+            ctx.fillRect(x * CELL, y * CELL, CELL, CELL)
+          }
+        }
+        drawGrid()
+      }
+
+      function cellFromEvent(e) {
+        const rect = canvas.getBoundingClientRect()
+        const col = Math.floor(((e.clientX - rect.left) / rect.width) * SIZE)
+        const row = Math.floor(((e.clientY - rect.top) / rect.height) * SIZE)
+        return { row: Math.max(0, Math.min(SIZE - 1, row)), col: Math.max(0, Math.min(SIZE - 1, col)) }
+      }
+
+      function paint(e) {
+        const { row, col } = cellFromEvent(e)
+        pixels[row][col] = currentColor.slice()
+        redraw()
+      }
+
+      let painting = false
+      canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault()
+        painting = true
+        canvas.setPointerCapture(e.pointerId)
+        paint(e)
+      })
+      canvas.addEventListener('pointermove', (e) => {
+        if (painting) paint(e)
+      })
+      const stop = () => (painting = false)
+      canvas.addEventListener('pointerup', stop)
+      canvas.addEventListener('pointercancel', stop)
+
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        pixels = Array.from({ length: SIZE }, () =>
+          Array.from({ length: SIZE }, () => [255, 255, 255])
+        )
+        redraw()
+        toast('已清空')
+      })
+
+      const uploadBtn = document.getElementById('uploadBtn')
+      uploadBtn.addEventListener('click', async () => {
+        const flat = []
+        for (const row of pixels) for (const px of row) flat.push([px[0], px[1], px[2]])
+
+        uploadBtn.disabled = true
+        try {
+          const res = await fetch('/api/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pixels: flat }),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (res.ok) {
+            toast('上传成功')
+          } else {
+            toast('上传失败：' + (data.error || res.status))
+          }
+        } catch (err) {
+          toast('上传失败：网络错误')
+        } finally {
+          uploadBtn.disabled = false
+        }
+      })
+
+      let toastTimer
+      function toast(msg) {
+        const el = document.getElementById('toast')
+        el.textContent = msg
+        el.classList.add('show')
+        clearTimeout(toastTimer)
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2200)
+      }
+
+      redraw()
+    </script>
+  </body>
+</html>
