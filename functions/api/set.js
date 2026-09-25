@@ -74,7 +74,7 @@ export async function onRequestPost(context) {
     return json({ error: '内容重复，不能重复发布' }, 409)
   }
 
-  const entry = { name, pixels, time: Date.now() }
+  const entry = { name, pixels, time: Date.now(), likes: 0 }
 
   try {
     await env.LIGHTFIELD_KV.put('pixels', JSON.stringify(entry))
