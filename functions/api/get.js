@@ -11,16 +11,19 @@ const json = (body, status = 200) =>
   })
 
 function normalizeEntry(e) {
-  return Array.isArray(e)
-    ? { name: '', workName: '', author: '', pixels: e, time: 0, likes: 0 }
-    : {
-        name: (e && e.name) || '',
-        workName: (e && e.workName) || '',
-        author: (e && e.author) || '',
-        pixels: e && e.pixels,
-        time: (e && e.time) || 0,
-        likes: (e && e.likes) || 0,
-      }
+  if (Array.isArray(e)) {
+    return { name: '', workName: '', author: '', pixels: e, time: 0, likes: 0 }
+  }
+  const legacy = !(e && (e.workName || e.author))
+  const name = (e && e.name) || ''
+  return {
+    name,
+    workName: legacy ? name : (e.workName || ''),
+    author: legacy ? '匿名' : (e.author || ''),
+    pixels: e && e.pixels,
+    time: (e && e.time) || 0,
+    likes: (e && e.likes) || 0,
+  }
 }
 
 export async function onRequestOptions() {

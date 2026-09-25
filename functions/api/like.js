@@ -92,14 +92,18 @@ export async function onRequestGet(context) {
     .filter((e) => Array.isArray(e.pixels) && (e.time || 0) >= minTime)
     .sort((a, b) => (b.likes || 0) - (a.likes || 0))
     .slice(0, top)
-    .map((e) => ({
-      pixels: e.pixels,
-      name: e.name || '',
-      workName: e.workName || '',
-      author: e.author || '',
-      time: e.time || 0,
-      likes: e.likes || 0,
-    }))
+    .map((e) => {
+      const legacy = !(e.workName || e.author)
+      const name = e.name || ''
+      return {
+        pixels: e.pixels,
+        name,
+        workName: legacy ? name : e.workName || '',
+        author: legacy ? '匿名' : e.author || '',
+        time: e.time || 0,
+        likes: e.likes || 0,
+      }
+    })
 
   return json({ works: sorted, range })
 }
