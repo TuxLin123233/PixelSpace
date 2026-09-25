@@ -367,6 +367,24 @@
         border-color: var(--like);
       }
 
+      .tile-load {
+        font-size: 10px;
+        color: var(--accent);
+        background: var(--surface-2);
+        border: 1px solid var(--border-strong);
+        border-radius: 999px;
+        padding: 1px 8px;
+        margin-top: 4px;
+        line-height: 1.5;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .tile-load:hover {
+        background: var(--accent);
+        color: #fff;
+      }
+
       .record-empty {
         font-size: 13px;
         color: var(--text-faint);
@@ -820,7 +838,7 @@
       <button id="uploadBtn" type="button">上传</button>
     </div>
 
-    <div class="hint" id="hint">画笔：点按或滑动作画</div>
+    <div class="hint" id="hint">画笔：点按或滑动作画 · B 画笔 / E 橡皮 / F 填充 / C 颜色 / Z 撤销</div>
 
     <div class="black-tip">提示：请尽量少用纯黑色（#000000）画面，黑色在灯板上显示为熄灭，作品会像有洞一样。</div>
 
@@ -875,9 +893,9 @@
         ['#212121', '黑'],
       ]
       const TOOL_HINTS = {
-        brush: '画笔：点按或滑动作画',
-        eraser: '橡皮擦：点按或滑动擦除为白色',
-        fill: '颜料桶：点一下区域即可填充当前颜色',
+        brush: '画笔：点按或滑动作画 · 快捷键 B',
+        eraser: '橡皮擦：点按或滑动擦除为白色 · 快捷键 E',
+        fill: '颜料桶：点一下区域即可填充当前颜色 · 快捷键 F',
       }
 
       const canvas = document.getElementById('board')
@@ -1389,6 +1407,44 @@
       const recordList = document.getElementById('recordList')
       const moreBtn = document.getElementById('moreBtn')
 
+      const mineSet = loadMine()
+
+      function loadMine() {
+        try {
+          return new Set(JSON.parse(localStorage.getItem('lw-mine') || '[]'))
+        } catch (e) {
+          return new Set()
+        }
+      }
+
+      function addMine(time) {
+        const arr = [...mineSet]
+        if (arr.includes(String(time))) return
+        arr.push(String(time))
+        if (arr.length > 200) arr.splice(0, arr.length - 200)
+        mineSet.clear()
+        arr.forEach((t) => mineSet.add(t))
+        try {
+          localStorage.setItem('lw-mine', JSON.stringify(arr))
+        } catch (e) {}
+      }
+
+      function loadOwn(rec) {
+        pushUndo()
+        pixels = []
+        for (let i = 0; i < 256; i += 16) {
+          const row = []
+          for (let j = 0; j < 16; j++) {
+            const p = rec.pixels[i + j] || [255, 255, 255]
+            row.push([p[0], p[1], p[2]])
+          }
+          pixels.push(row)
+        }
+        redraw()
+        scheduleSave()
+        toast('已载入你的作品，可继续编辑后重新上传')
+      }
+
       async function fetchRecords() {
         try {
           const res = await fetch('/api/get?limit=10')
@@ -1447,6 +1503,17 @@
           })
 
           meta.append(nm, tm, likeBadge)
+
+          if (mineSet.has(String(rec.time))) {
+            const loadBtn = document.createElement('span')
+            loadBtn.className = 'tile-load'
+            loadBtn.textContent = '载入编辑'
+            loadBtn.addEventListener('click', (e) => {
+              e.stopPropagation()
+              loadOwn(rec)
+            })
+            meta.appendChild(loadBtn)
+          }
 
           tile.append(c, meta)
           tile.addEventListener('click', () => previewRecord(rec))
@@ -1519,6 +1586,7 @@
           })
           const data = await res.json().catch(() => ({}))
           if (res.ok) {
+            if (data.time) addMine(data.time)
             toast('上传成功' + (data.name ? '：' + data.name : '（匿名）'))
             fetchRecords()
           } else {
@@ -1615,6 +1683,25 @@
       })
 
       applyThemeIcon()
+
+      /* ---------- 键盘快捷键 ---------- */
+      document.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        const tag = (e.target && e.target.tagName) || ''
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+        if (!consentOverlay.hidden || !previewOverlay.hidden || !tipOverlay.hidden) return
+        const k = e.key.toLowerCase()
+        if (k === 'b') setTool('brush')
+        else if (k === 'e') setTool('eraser')
+        else if (k === 'f') setTool('fill')
+        else if (k === 'c') {
+          e.preventDefault()
+          toolColorBtn.click()
+        } else if (k === 'z') {
+          e.preventDefault()
+          undoBtn.click()
+        }
+      })
 
       /* ---------- 合规同意弹窗 ---------- */
       const consentOverlay = document.getElementById('consentOverlay')

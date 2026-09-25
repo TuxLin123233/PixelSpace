@@ -146,10 +146,35 @@
       }
 
       .featured-sub {
-        margin-left: auto;
         font-size: 11px;
         font-weight: 500;
         color: var(--text-faint);
+        margin-bottom: 12px;
+      }
+
+      .range-tabs {
+        display: flex;
+        gap: 4px;
+        background: var(--surface-2);
+        border-radius: 999px;
+        padding: 3px;
+      }
+
+      .range-tabs button {
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 4px 12px;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .range-tabs button.active {
+        background: var(--surface);
+        color: var(--text);
       }
 
       .featured-row {
@@ -243,6 +268,15 @@
 
       .card:hover { box-shadow: 0 8px 22px var(--shadow-hover); }
       .card:active { transform: scale(0.97); }
+      .card.hl {
+        box-shadow: 0 0 0 3px var(--accent), 0 8px 22px var(--shadow-hover);
+        animation: hlPulse 1.6s ease 2;
+      }
+
+      @keyframes hlPulse {
+        0%, 100% { box-shadow: 0 0 0 3px var(--accent), 0 8px 22px var(--shadow-hover); }
+        50% { box-shadow: 0 0 0 7px rgba(91, 141, 239, 0.45), 0 8px 22px var(--shadow-hover); }
+      }
 
       .art {
         width: 100%;
@@ -424,8 +458,28 @@
       .preview-like {
         display: flex;
         justify-content: center;
+        gap: 10px;
         margin-top: 12px;
       }
+
+      .share-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--border-strong);
+        background: var(--surface-2);
+        color: var(--text-muted);
+        border-radius: 999px;
+        padding: 3px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.12s;
+        line-height: 1.5;
+      }
+
+      .share-btn:active { transform: scale(0.93); }
+      .share-btn.copied { background: var(--ok-bg, #e8f5e9); color: var(--ok, #43a047); border-color: var(--ok, #43a047); }
 
       .preview-note {
         margin-top: 12px;
@@ -451,8 +505,13 @@
       <section class="featured" id="featured" hidden>
         <div class="featured-head">
           <span>🏆 佳作展示</span>
-          <span class="featured-sub">按赞数排名 Top 5</span>
+          <div class="range-tabs" id="rangeTabs">
+            <button type="button" data-range="all" class="active">总榜</button>
+            <button type="button" data-range="today">今日</button>
+            <button type="button" data-range="week">本周</button>
+          </div>
         </div>
+        <div class="featured-sub" id="featuredSub">按赞数排名 Top 5</div>
         <div class="featured-row" id="featuredRow"></div>
       </section>
 
@@ -481,6 +540,7 @@
         </div>
         <div class="preview-like">
           <button class="like-btn" id="previewLike" type="button">♥ <span id="previewLikeCount">0</span></button>
+          <button class="share-btn" id="previewShare" type="button">🔗 复制链接</button>
         </div>
         <div class="preview-note">仅支持预览，不可载入作画。请勿抄袭或直接提交他人的作品。</div>
       </div>
@@ -621,14 +681,36 @@
       /* ---------- 佳作展示 ---------- */
       const featured = document.getElementById('featured')
       const featuredRow = document.getElementById('featuredRow')
+      const featuredSub = document.getElementById('featuredSub')
+      const rangeTabs = document.getElementById('rangeTabs')
+      let featuredRange = 'all'
+
+      rangeTabs.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          rangeTabs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn))
+          featuredRange = btn.dataset.range
+          loadFeatured()
+        })
+      })
 
       async function loadFeatured() {
         try {
-          const res = await fetch('/api/like?top=5')
+          const tz = -(new Date().getTimezoneOffset())
+          const res = await fetch(`/api/like?top=5&range=${featuredRange}&tz=${tz}`)
           if (!res.ok) return
           const data = await res.json()
           const works = data.works || []
-          if (!works.length) return
+          featuredSub.textContent =
+            featuredRange === 'today'
+              ? '按今日点赞数排名 Top 5'
+              : featuredRange === 'week'
+                ? '按本周点赞数排名 Top 5'
+                : '按总点赞数排名 Top 5'
+          if (!works.length) {
+            featured.hidden = true
+            featuredRow.innerHTML = ''
+            return
+          }
           featured.hidden = false
           featuredRow.innerHTML = ''
           works.forEach((w, i) => {
@@ -665,6 +747,7 @@
       /* ---------- 列表 ---------- */
       const sentinel = document.getElementById('sentinel')
       const PAGE = 24
+      const cardsByTime = new Map()
       let offset = 0
       let done = false
       let loading = false
@@ -702,6 +785,7 @@
               preview(rec)
             }
           })
+          cardsByTime.set(String(rec.time), card)
           gallery.appendChild(card)
         })
       }
@@ -754,6 +838,41 @@
 
       loadMore()
 
+      /* ---------- 分享定位（/gallery?t=时间戳） ---------- */
+      const shareTarget = new URLSearchParams(location.search).get('t')
+
+      async function ensureLoadedTo(upTo) {
+        let guard = 0
+        while (!done && offset <= upTo && guard++ < 300) {
+          if (loading) {
+            await new Promise((r) => setTimeout(r, 120))
+          } else {
+            await loadMore()
+          }
+        }
+      }
+
+      if (shareTarget) {
+        ;(async () => {
+          try {
+            const res = await fetch('/api/get?locate=' + encodeURIComponent(shareTarget))
+            const data = await res.json()
+            if (data.found && data.index != null) {
+              await ensureLoadedTo(data.index)
+              const card = cardsByTime.get(String(shareTarget))
+              if (card) {
+                card.classList.add('hl')
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                setTimeout(() => card.classList.remove('hl'), 4200)
+                countEl.textContent = '定位到第 ' + (data.index + 1) + ' 件作品'
+              }
+            } else {
+              toast('未找到该作品或已被删除')
+            }
+          } catch (e) {}
+        })()
+      }
+
       /* ---------- 预览弹窗 ---------- */
       const previewOverlay = document.getElementById('previewOverlay')
       let currentPreview = null
@@ -788,6 +907,29 @@
         if (!currentPreview) return
         const btn = document.getElementById('previewLike')
         like(currentPreview, btn)
+      })
+
+      document.getElementById('previewShare').addEventListener('click', () => {
+        if (!currentPreview) return
+        const url = location.origin + '/gallery?t=' + currentPreview.time
+        const btn = document.getElementById('previewShare')
+        const done = () => {
+          btn.textContent = '✓ 已复制'
+          btn.classList.add('copied')
+          setTimeout(() => {
+            btn.textContent = '🔗 复制链接'
+            btn.classList.remove('copied')
+          }, 1800)
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(done).catch(() => {
+            prompt('复制链接', url)
+            done()
+          })
+        } else {
+          prompt('复制链接', url)
+          done()
+        }
       })
 
       /* ---------- 主题切换 ---------- */

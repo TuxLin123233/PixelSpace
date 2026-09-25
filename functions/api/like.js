@@ -66,6 +66,22 @@ export async function onRequestGet(context) {
   const url = new URL(request.url)
   const topParam = Number(url.searchParams.get('top'))
   const top = Number.isFinite(topParam) && topParam > 0 ? Math.floor(topParam) : 10
+  const range = url.searchParams.get('range') || 'all'
+  const tz = Number(url.searchParams.get('tz'))
+  const tzMin = Number.isFinite(tz) ? tz : 0
+
+  let minTime = 0
+  if (range === 'today' || range === 'week') {
+    const now = Date.now()
+    const dayStart = now - ((now + tzMin * 60000) % 86400000) - tzMin * 60000
+    if (range === 'today') {
+      minTime = dayStart
+    } else {
+      const dow = new Date(now + tzMin * 60000).getUTCDay()
+      const sinceMonday = (dow + 6) % 7
+      minTime = dayStart - sinceMonday * 86400000
+    }
+  }
 
   if (!env.LIGHTFIELD_KV) {
     return json({ works: [] })
@@ -73,7 +89,7 @@ export async function onRequestGet(context) {
 
   const history = await readHistory(env.LIGHTFIELD_KV)
   const sorted = history
-    .filter((e) => Array.isArray(e.pixels))
+    .filter((e) => Array.isArray(e.pixels) && (e.time || 0) >= minTime)
     .sort((a, b) => (b.likes || 0) - (a.likes || 0))
     .slice(0, top)
     .map((e) => ({
@@ -83,5 +99,5 @@ export async function onRequestGet(context) {
       likes: e.likes || 0,
     }))
 
-  return json({ works: sorted })
+  return json({ works: sorted, range })
 }

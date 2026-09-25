@@ -11,6 +11,7 @@ const json = (body, status = 200) =>
   })
 
 const HISTORY_MAX = 1000
+const UPLOAD_WINDOW_MS = 5 * 60 * 1000
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
@@ -69,6 +70,18 @@ export async function onRequestPost(context) {
     return json({ error: 'LIGHTFIELD_KV is not configured' }, 500)
   }
 
+  const ip = request.headers.get('cf-connecting-ip') || ''
+  if (ip) {
+    const rateKey = 'rl:' + ip
+    const last = Number(await env.LIGHTFIELD_KV.get(rateKey))
+    const nowRl = Date.now()
+    if (Number.isFinite(last) && last > 0 && nowRl - last < UPLOAD_WINDOW_MS) {
+      const waitMin = Math.ceil((UPLOAD_WINDOW_MS - (nowRl - last)) / 60000)
+      return json({ error: '上传太频繁，请 ' + waitMin + ' 分钟后再试' }, 429)
+    }
+    await env.LIGHTFIELD_KV.put(rateKey, String(nowRl), { expirationTtl: Math.ceil(UPLOAD_WINDOW_MS / 1000) })
+  }
+
   const history = await readHistory(env.LIGHTFIELD_KV)
   if (history.some((e) => samePixels(entryPixels(e), pixels))) {
     return json({ error: '内容重复，不能重复发布' }, 409)
@@ -86,5 +99,5 @@ export async function onRequestPost(context) {
     return json({ error: 'KV write failed: ' + err.message }, 500)
   }
 
-  return json({ ok: true, count: pixels.length, name })
+  return json({ ok: true, count: pixels.length, name, time: entry.time })
 }

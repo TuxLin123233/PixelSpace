@@ -68,6 +68,12 @@ export async function onRequestGet(context) {
 
   const single = url.searchParams.get('single') === '1'
 
+  const locateParam = Number(url.searchParams.get('locate'))
+  if (Number.isFinite(locateParam) && locateParam > 0) {
+    const idx = history.findIndex((e) => e.time === locateParam)
+    return json({ found: idx !== -1, index: idx, total: history.length })
+  }
+
   const total = history.length
   const limitParam = Number(url.searchParams.get('limit'))
   const limit =
