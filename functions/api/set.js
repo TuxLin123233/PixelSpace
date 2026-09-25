@@ -10,7 +10,7 @@ const json = (body, status = 200) =>
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
 
-const HISTORY_MAX = 100
+const HISTORY_MAX = 1000
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS })
