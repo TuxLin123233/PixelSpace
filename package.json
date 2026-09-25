@@ -9,11 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@epoundor/vue-fetch": "^0.2.1-beta.1",
+    "gib-validate": "^1.1.0",
+    "js-cookie": "^3.0.8",
     "pinia": "^4.0.2",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@vitejs/plugin-vue": "^6.0.8",
     "vite": "^8.1.5",
     "vite-plugin-vue-devtools": "^8.1.5"

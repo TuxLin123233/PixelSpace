@@ -45,6 +45,7 @@ function send_show_image(){
   box-sizing: border-box;
   padding-bottom: 10px;
   transition: transform 0.5s ease, box-shadow 0.5s ease;
+  border: 1px solid rgb(235, 235, 235);
 }
 
 .pixel-card:hover{
