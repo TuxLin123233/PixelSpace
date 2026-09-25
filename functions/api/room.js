@@ -59,6 +59,7 @@ function stripId(room) {
     version: room.version,
     pixels: room.pixels,
     members: room.members,
+    title: room.title || '',
     updatedAt: room.updatedAt,
   }
 }
@@ -80,6 +81,7 @@ async function handleCreate(env, body) {
     version: 0,
     pixels: Array.from({ length: 256 }, () => [255, 255, 255]),
     members: [],
+    title: '',
     updatedAt: Date.now(),
   }
   await writeRoom(env.LIGHTFIELD_KV, room)
@@ -154,6 +156,22 @@ async function handleDraw(env, body) {
   return json({ ok: true, state: stripId(room) })
 }
 
+async function handleTitle(env, body) {
+  const code = ((body && body.code) || '').toString().toUpperCase().trim()
+  if (!/^[A-Z0-9]{6}$/.test(code)) return json({ error: '房间码格式不正确' }, 400)
+  const id = (body && body.id) || ''
+  const title = ((body && body.title) || '').toString().slice(0, 20)
+
+  const room = await readRoom(env.LIGHTFIELD_KV, code)
+  if (!room) return json({ error: '房间不存在或已过期' }, 404)
+  if (!room.members.some((m) => m.id === id)) return json({ error: '请先加入房间' }, 403)
+
+  room.title = title
+  room.updatedAt = Date.now()
+  await writeRoom(env.LIGHTFIELD_KV, room)
+  return json({ ok: true, state: stripId(room) })
+}
+
 async function handleGet(env, url) {
   const code = (url.searchParams.get('code') || '').toUpperCase().trim()
   if (!/^[A-Z0-9]{6}$/.test(code)) return json({ error: '房间码格式不正确' }, 400)
@@ -184,5 +202,6 @@ export async function onRequestPost(context) {
   if (action === 'join') return handleJoin(env, body)
   if (action === 'leave') return handleLeave(env, body)
   if (action === 'draw') return handleDraw(env, body)
-  return json({ error: '缺少 action（create/join/leave/draw）' }, 400)
+  if (action === 'title') return handleTitle(env, body)
+  return json({ error: '缺少 action（create/join/leave/draw/title）' }, 400)
 }

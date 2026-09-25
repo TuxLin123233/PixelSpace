@@ -171,7 +171,7 @@
         margin-top: 8px;
       }
 
-      .members {
+.members {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
@@ -188,6 +188,11 @@
       }
 
       .member-chip.me { color: var(--accent); }
+
+      .title-field {
+        margin-top: 12px;
+        text-align: center;
+      }
 
       #board {
         display: block;
@@ -528,6 +533,7 @@
         <button class="icon-btn" id="copyBtn" type="button" title="复制邀请链接" style="height:46px;width:46px;min-width:46px">📋</button>
       </div>
       <div class="members" id="members"></div>
+      <input class="field title-field" id="titleInput" placeholder="作品名（联机共享，可一起改）" maxlength="20" autocomplete="off">
       <div class="share-link" id="shareLink"></div>
 
       <div class="panel" style="margin-top:14px;box-shadow:none;background:transparent;padding:0">
@@ -596,6 +602,7 @@
       const undoBtn = document.getElementById('undoBtn')
       const publishBtn = document.getElementById('publishBtn')
       const syncStatus = document.getElementById('syncStatus')
+      const titleInput = document.getElementById('titleInput')
 
       let pixels = Array.from({ length: SIZE }, () =>
         Array.from({ length: SIZE }, () => [255, 255, 255])
@@ -788,7 +795,7 @@
         roomCodeEl.textContent = room.code
         roomMeta.innerHTML =
           '在线 <span class="ok">' + room.members.length + '</span> / 3 · ' +
-          '版本 v' + room.version
+          '版本 v' + room.version + (room.title ? ' · 「' + room.title + '」' : '')
         membersEl.innerHTML = ''
         room.members.forEach((m) => {
           const chip = document.createElement('span')
@@ -796,6 +803,9 @@
           chip.textContent = (m.id === memberId ? '我 · ' : '') + (m.name || '匿名')
           membersEl.appendChild(chip)
         })
+        if (document.activeElement !== titleInput) {
+          titleInput.value = room.title || ''
+        }
         shareLink.textContent = '邀请链接：' + location.origin + '/room?code=' + room.code
         copyBtn.disabled = false
       }
@@ -980,6 +990,28 @@
         }
       })
 
+      /* ---------- 共享作品名 ---------- */
+      let titleTimer = null
+      titleInput.addEventListener('input', () => {
+        clearTimeout(titleTimer)
+        titleTimer = setTimeout(async () => {
+          if (!room || !memberId) return
+          const title = titleInput.value.trim()
+          try {
+            const res = await fetch('/api/room', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'title', code: room.code, id: memberId, title }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (res.ok && data.state) {
+              room = data.state
+              renderRoom()
+            }
+          } catch (e) {}
+        }, 800)
+      })
+
       /* ---------- 发布到画板（联机画布） ---------- */
       publishBtn.addEventListener('click', async () => {
         if (!room) return
@@ -987,7 +1019,8 @@
         try {
           await commitDraw()
           const payload = { pixels: flatPixels() }
-          const name = nameInput.value.trim() || localStorage.getItem('paintName') || ''
+          const title = (room.title || '').trim()
+          const name = title || nameInput.value.trim() || localStorage.getItem('paintName') || ''
           if (name) payload.name = name
           const res = await fetch('/api/set', {
             method: 'POST',
