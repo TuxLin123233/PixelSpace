@@ -25,6 +25,10 @@ export async function onRequestOptions() {
 export async function onRequestGet(context) {
   const { request, env } = context
 
+  const cacheKey = new Request(request.url)
+  const cached = await caches.default.match(cacheKey)
+  if (cached) return cached
+
   const fallback = {
     pixels: null,
     name: null,
@@ -70,17 +74,21 @@ export async function onRequestGet(context) {
 
   const noNew = after !== null && latest && latest.time === after
 
+  let response
   if (noNew) {
     const pool = history.filter((e) => e.time !== latest.time)
     const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : latest
-    return json({ pixels: pick.pixels, name: pick.name, time: pick.time, history, random: true })
+    response = json({ pixels: pick.pixels, name: pick.name, time: pick.time, history, random: true })
+  } else {
+    response = json({
+      pixels: latest ? latest.pixels : null,
+      name: latest ? latest.name : null,
+      time: latest ? latest.time : null,
+      history,
+      random: false,
+    })
   }
 
-  return json({
-    pixels: latest ? latest.pixels : null,
-    name: latest ? latest.name : null,
-    time: latest ? latest.time : null,
-    history,
-    random: false,
-  })
+  await caches.default.put(cacheKey, response.clone())
+  return response
 }
