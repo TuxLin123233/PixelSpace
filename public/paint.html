@@ -413,7 +413,10 @@
         toast('已撤销')
       }
 
-      undoBtn.addEventListener('click', undo)
+      undoBtn.addEventListener('click', () => {
+        undo()
+        scheduleSave()
+      })
 
       /* ---------- 颜色 ---------- */
       const pickWrap = document.getElementById('pickWrap')
@@ -727,7 +730,10 @@
           redraw()
         }
       })
-      const stop = () => (painting = false)
+      const stop = () => {
+        if (painting) scheduleSave()
+        painting = false
+      }
       canvas.addEventListener('pointerup', stop)
       canvas.addEventListener('pointercancel', stop)
 
@@ -737,7 +743,50 @@
           Array.from({ length: SIZE }, () => [255, 255, 255])
         )
         redraw()
+        scheduleSave()
         toast('已清空')
+      })
+
+      /* ---------- 中途保存（localStorage） ---------- */
+      const DRAFT_KEY = 'paintDraft'
+      let saveTimer
+
+      function saveDraft() {
+        try {
+          localStorage.setItem(DRAFT_KEY, JSON.stringify({ pixels, time: Date.now() }))
+        } catch (err) {
+          /* 存储失败可忽略 */
+        }
+      }
+
+      function scheduleSave() {
+        clearTimeout(saveTimer)
+        saveTimer = setTimeout(saveDraft, 400)
+      }
+
+      function loadDraft() {
+        try {
+          const raw = localStorage.getItem(DRAFT_KEY)
+          if (!raw) return false
+          const data = JSON.parse(raw)
+          if (!data || !Array.isArray(data.pixels)) return false
+          const flat = data.pixels
+          pixels = Array.from({ length: SIZE }, (_, y) =>
+            Array.from({ length: SIZE }, (_, x) => {
+              const px = flat[y * SIZE + x]
+              return px ? [px[0], px[1], px[2]] : [255, 255, 255]
+            })
+          )
+          redraw()
+          return true
+        } catch (err) {
+          return false
+        }
+      }
+
+      window.addEventListener('beforeunload', saveDraft)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) saveDraft()
       })
 
       /* ---------- 名字与历史记录 ---------- */
@@ -844,6 +893,7 @@
           })
         )
         redraw()
+        scheduleSave()
         toast('已载入「' + (rec.name || '匿名') + '」的作品')
       }
 
@@ -890,6 +940,10 @@
       applyColor()
       initName()
       fetchRecords()
+
+      if (loadDraft()) {
+        toast('欢迎回来！你的数据已保存')
+      }
     </script>
   </body>
 </html>
