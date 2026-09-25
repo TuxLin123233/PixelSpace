@@ -48,7 +48,7 @@
         width: 100%;
         max-width: 460px;
         display: flex;
-        gap: 10px;
+        gap: 8px;
         margin-top: 18px;
       }
 
@@ -76,6 +76,37 @@
         border-radius: 20px;
         box-shadow: 0 6px 20px rgba(80, 60, 40, 0.10);
         padding: 16px;
+      }
+
+      .pick-wrap[hidden] { display: none; }
+
+      .preset-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .swatch {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.12s ease;
+        padding: 0;
+      }
+
+      .swatch:active { transform: scale(0.9); }
+
+      .swatch.selected {
+        box-shadow: 0 0 0 3px #fff, 0 0 0 6px #5b8def;
+        transform: scale(1.08);
+      }
+
+      .pick-main {
         display: grid;
         grid-template-columns: 1fr 28px;
         gap: 12px;
@@ -112,6 +143,16 @@
         color: #3b342c;
         font-weight: 600;
       }
+
+      .cur-swatch {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        background: #e53935;
+      }
+
+      #curHex { letter-spacing: 0.5px; }
 
       .records {
         width: 100%;
@@ -203,16 +244,6 @@
 
       .name-row input:focus { border-color: #5b8def; }
 
-      .cur-swatch {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        border: 2px solid rgba(0, 0, 0, 0.1);
-        background: #e53935;
-      }
-
-      #curHex { letter-spacing: 0.5px; }
-
       .actions {
         width: 100%;
         max-width: 460px;
@@ -230,7 +261,7 @@
         transition: transform 0.12s ease, opacity 0.15s ease;
       }
 
-      #clearBtn {
+      #undoBtn, #clearBtn {
         background: #efe9e0;
         color: #6b5f50;
       }
@@ -256,6 +287,7 @@
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
         max-width: 86vw;
         text-align: center;
+        z-index: 10;
       }
 
       #toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -283,22 +315,25 @@
       <button id="toolBrush" class="tool active" type="button" data-tool="brush">画笔</button>
       <button id="toolEraser" class="tool" type="button" data-tool="eraser">橡皮擦</button>
       <button id="toolFill" class="tool" type="button" data-tool="fill">颜料桶</button>
+      <button id="toolColor" class="tool" type="button">颜色</button>
     </div>
 
-    <div class="pick-wrap">
-      <div class="sv-box" id="svBox">
-        <canvas id="svCanvas"></canvas>
-        <canvas id="svMarker"></canvas>
+    <div class="pick-wrap" id="pickWrap" hidden>
+      <div class="preset-row" id="presetRow"></div>
+      <div class="pick-main">
+        <div class="sv-box" id="svBox">
+          <canvas id="svCanvas"></canvas>
+          <canvas id="svMarker"></canvas>
+        </div>
+        <div class="hue-box" id="hueBox">
+          <canvas id="hueCanvas"></canvas>
+          <canvas id="hueMarker"></canvas>
+        </div>
       </div>
-      <div class="hue-box" id="hueBox">
-        <canvas id="hueCanvas"></canvas>
-        <canvas id="hueMarker"></canvas>
+      <div class="cur">
+        <span class="cur-swatch" id="curSwatch"></span>
+        <span id="curHex">#e53935</span>
       </div>
-    </div>
-
-    <div class="cur">
-      <span class="cur-swatch" id="curSwatch"></span>
-      <span id="curHex">#e53935</span>
     </div>
 
     <div class="records">
@@ -307,10 +342,11 @@
     </div>
 
     <div class="name-row">
-      <input id="nameInput" type="text" placeholder="你的名字（上传时绑定到作品）" maxlength="20">
+      <input id="nameInput" type="text" placeholder="你的名字（上传时绑定到作品，可留空匿名）" maxlength="20">
     </div>
 
     <div class="actions">
+      <button id="undoBtn" type="button" disabled>撤销</button>
       <button id="clearBtn" type="button">清空</button>
       <button id="uploadBtn" type="button">上传</button>
     </div>
@@ -320,6 +356,17 @@
 
     <script>
       const SIZE = 16
+      const PRESET_COLORS = [
+        ['#e53935', '红'],
+        ['#fb8c00', '橙'],
+        ['#fdd835', '黄'],
+        ['#43a047', '绿'],
+        ['#00acc1', '青'],
+        ['#1e88e5', '蓝'],
+        ['#8e24aa', '紫'],
+        ['#ffffff', '白'],
+        ['#212121', '黑'],
+      ]
       const TOOL_HINTS = {
         brush: '画笔：点按或滑动作画',
         eraser: '橡皮擦：点按或滑动擦除为白色',
@@ -343,8 +390,35 @@
       const hint = document.getElementById('hint')
       const curSwatch = document.getElementById('curSwatch')
       const curHex = document.getElementById('curHex')
+      const undoBtn = document.getElementById('undoBtn')
 
-      /* ---------- 颜色拾取器 ---------- */
+      /* ---------- 撤销 ---------- */
+      const undoStack = []
+      const MAX_UNDO = 30
+
+      const snapshot = () => pixels.map((r) => r.map((px) => [px[0], px[1], px[2]]))
+      const updateUndoBtn = () => (undoBtn.disabled = undoStack.length === 0)
+
+      function pushUndo() {
+        undoStack.push(snapshot())
+        if (undoStack.length > MAX_UNDO) undoStack.shift()
+        updateUndoBtn()
+      }
+
+      function undo() {
+        if (!undoStack.length) return
+        pixels = undoStack.pop()
+        redraw()
+        updateUndoBtn()
+        toast('已撤销')
+      }
+
+      undoBtn.addEventListener('click', undo)
+
+      /* ---------- 颜色 ---------- */
+      const pickWrap = document.getElementById('pickWrap')
+      const toolColorBtn = document.getElementById('toolColor')
+      const presetRow = document.getElementById('presetRow')
       const svBox = document.getElementById('svBox')
       const svCanvas = document.getElementById('svCanvas')
       const svMarker = document.getElementById('svMarker')
@@ -358,6 +432,35 @@
 
       let H = 0, S = 0.77, V = 0.9
       let SW = 0, SH = 0, HW = 0, HH = 0
+      let pickOpen = false
+
+      toolColorBtn.addEventListener('click', () => {
+        pickOpen = !pickOpen
+        pickWrap.hidden = !pickOpen
+        toolColorBtn.classList.toggle('active', pickOpen)
+        if (pickOpen) resizePicker()
+      })
+
+      function hexToRgb(hex) {
+        const h = hex.replace('#', '')
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+      }
+
+      function rgbToHsv([r, g, b]) {
+        r /= 255; g /= 255; b /= 255
+        const max = Math.max(r, g, b)
+        const min = Math.min(r, g, b)
+        const d = max - min
+        let h = 0
+        if (d !== 0) {
+          if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) % 6
+          else if (max === g) h = (b - r) / d + 2
+          else h = (r - g) / d + 4
+          h /= 6
+        }
+        const s = max === 0 ? 0 : d / max
+        return [h, s, max]
+      }
 
       function hsvToRgb(h, s, v) {
         const i = Math.floor(h * 6)
@@ -371,7 +474,49 @@
         return [rr, gg, bb]
       }
 
+      function sameRgb(a, b) {
+        return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
+      }
+
+      const presets = PRESET_COLORS.map(([hex]) => hexToRgb(hex))
+      const swatches = PRESET_COLORS.map(([hex], i) => {
+        const sw = document.createElement('button')
+        sw.type = 'button'
+        sw.className = 'swatch'
+        sw.style.background = hex
+        sw.title = PRESET_COLORS[i][1]
+        sw.addEventListener('click', () => setFromPreset(i))
+        presetRow.appendChild(sw)
+        return sw
+      })
+
+      function setFromPreset(i) {
+        currentColor = presets[i].slice()
+        const [h, s, v] = rgbToHsv(currentColor)
+        if (H !== h) {
+          H = h
+          renderSV()
+        }
+        S = s
+        V = v
+        drawSVMarker()
+        drawHueMarker()
+        updateDisplay(currentColor)
+      }
+
+      function updateDisplay(rgb) {
+        curSwatch.style.background = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+        curHex.textContent = '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('')
+        swatches.forEach((sw, i) => sw.classList.toggle('selected', sameRgb(rgb, presets[i])))
+      }
+
+      function applyColor() {
+        currentColor = hsvToRgb(H, S, V)
+        updateDisplay(currentColor)
+      }
+
       function resizePicker() {
+        if (!pickOpen) return
         const sRect = svBox.getBoundingClientRect()
         SW = Math.max(20, Math.round(sRect.width * dpr))
         SH = SW
@@ -393,6 +538,7 @@
       }
 
       function renderSV() {
+        if (!SW) return
         const img = ctxSv.createImageData(SW, SH)
         const d = img.data
         for (let y = 0; y < SH; y++) {
@@ -401,16 +547,14 @@
             const s = x / (SW - 1)
             const [r, g, b] = hsvToRgb(H, s, v)
             const i = (y * SW + x) * 4
-            d[i] = r
-            d[i + 1] = g
-            d[i + 2] = b
-            d[i + 3] = 255
+            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255
           }
         }
         ctxSv.putImageData(img, 0, 0)
       }
 
       function renderHue() {
+        if (!HW) return
         for (let y = 0; y < HH; y++) {
           const hue = y / (HH - 1)
           const [r, g, b] = hsvToRgb(hue, 1, 1)
@@ -420,6 +564,7 @@
       }
 
       function drawSVMarker() {
+        if (!SW) return
         ctxSvM.clearRect(0, 0, SW, SH)
         const x = S * SW
         const y = (1 - V) * SH
@@ -433,6 +578,7 @@
       }
 
       function drawHueMarker() {
+        if (!HW) return
         ctxHueM.clearRect(0, 0, HW, HH)
         const y = H * HH
         ctxHueM.fillStyle = '#fff'
@@ -445,24 +591,13 @@
         ctxHueM.stroke()
       }
 
-      function applyColor() {
-        currentColor = hsvToRgb(H, S, V)
-        curSwatch.style.background = `rgb(${currentColor[0]}, ${currentColor[1]}, ${currentColor[2]})`
-        curHex.textContent = '#' + currentColor.map((c) => c.toString(16).padStart(2, '0')).join('')
-      }
-
       let svDrag = false
       let hueDrag = false
 
-      function svPos(e) {
-        const rect = svCanvas.getBoundingClientRect()
-        const s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-        const v = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height))
-        return [s, v]
-      }
-
       function setSV(e) {
-        ;[S, V] = svPos(e)
+        const rect = svCanvas.getBoundingClientRect()
+        S = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+        V = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height))
         drawSVMarker()
         applyColor()
       }
@@ -502,13 +637,13 @@
       window.addEventListener('resize', resizePicker)
 
       /* ---------- 画板 ---------- */
-      document.querySelectorAll('.tool').forEach((btn) => {
+      document.querySelectorAll('.tool[data-tool]').forEach((btn) => {
         btn.addEventListener('click', () => setTool(btn.dataset.tool))
       })
 
       function setTool(tool) {
         activeTool = tool
-        document.querySelectorAll('.tool').forEach((b) =>
+        document.querySelectorAll('.tool[data-tool]').forEach((b) =>
           b.classList.toggle('active', b.dataset.tool === tool)
         )
         hint.textContent = TOOL_HINTS[tool]
@@ -565,7 +700,6 @@
           pixels[r][c] = currentColor.slice()
           stack.push([r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1])
         }
-        redraw()
       }
 
       function paint(e) {
@@ -576,61 +710,34 @@
         }
         const color = activeTool === 'eraser' ? [255, 255, 255] : currentColor
         pixels[row][col] = color.slice()
-        redraw()
       }
 
       let painting = false
       canvas.addEventListener('pointerdown', (e) => {
         e.preventDefault()
         painting = true
+        pushUndo()
         canvas.setPointerCapture(e.pointerId)
         paint(e)
+        redraw()
       })
       canvas.addEventListener('pointermove', (e) => {
-        if (painting && activeTool !== 'fill') paint(e)
+        if (painting && activeTool !== 'fill') {
+          paint(e)
+          redraw()
+        }
       })
       const stop = () => (painting = false)
       canvas.addEventListener('pointerup', stop)
       canvas.addEventListener('pointercancel', stop)
 
       document.getElementById('clearBtn').addEventListener('click', () => {
+        pushUndo()
         pixels = Array.from({ length: SIZE }, () =>
           Array.from({ length: SIZE }, () => [255, 255, 255])
         )
         redraw()
         toast('已清空')
-      })
-
-      const uploadBtn = document.getElementById('uploadBtn')
-      uploadBtn.addEventListener('click', async () => {
-        const name = nameInput.value.trim()
-        if (!name) {
-          toast('请先填写你的名字')
-          return
-        }
-
-        const flat = []
-        for (const row of pixels) for (const px of row) flat.push([px[0], px[1], px[2]])
-
-        uploadBtn.disabled = true
-        try {
-          const res = await fetch('/api/set', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pixels: flat, name }),
-          })
-          const data = await res.json().catch(() => ({}))
-          if (res.ok) {
-            toast('上传成功：' + data.name)
-            fetchRecords()
-          } else {
-            toast('上传失败：' + (data.error || res.status))
-          }
-        } catch (err) {
-          toast('上传失败：网络错误')
-        } finally {
-          uploadBtn.disabled = false
-        }
       })
 
       /* ---------- 名字与历史记录 ---------- */
@@ -648,6 +755,20 @@
         nameInput.addEventListener('input', () => {
           localStorage.setItem('paintName', nameInput.value.trim())
         })
+      }
+
+      function resolveName() {
+        let name = nameInput.value.trim()
+        if (name) return name
+        const typed = window.prompt('未填写名字：输入你的名字后确定；直接确定或取消将匿名上传。')
+        if (typed !== null) {
+          name = typed.trim()
+          if (name) {
+            nameInput.value = name
+            localStorage.setItem('paintName', name)
+          }
+        }
+        return name
       }
 
       function formatTime(ts) {
@@ -714,6 +835,7 @@
       }
 
       function loadRecord(rec) {
+        pushUndo()
         const flat = rec.pixels
         pixels = Array.from({ length: SIZE }, (_, y) =>
           Array.from({ length: SIZE }, (_, x) => {
@@ -725,6 +847,36 @@
         toast('已载入「' + (rec.name || '匿名') + '」的作品')
       }
 
+      const uploadBtn = document.getElementById('uploadBtn')
+      uploadBtn.addEventListener('click', async () => {
+        const name = resolveName()
+
+        const flat = []
+        for (const row of pixels) for (const px of row) flat.push([px[0], px[1], px[2]])
+        const payload = { pixels: flat }
+        if (name) payload.name = name
+
+        uploadBtn.disabled = true
+        try {
+          const res = await fetch('/api/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (res.ok) {
+            toast('上传成功' + (data.name ? '：' + data.name : '（匿名）'))
+            fetchRecords()
+          } else {
+            toast('上传失败：' + (data.error || res.status))
+          }
+        } catch (err) {
+          toast('上传失败：网络错误')
+        } finally {
+          uploadBtn.disabled = false
+        }
+      })
+
       let toastTimer
       function toast(msg) {
         const el = document.getElementById('toast')
@@ -735,7 +887,6 @@
       }
 
       redraw()
-      resizePicker()
       applyColor()
       initName()
       fetchRecords()

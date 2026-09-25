@@ -37,9 +37,6 @@ export async function onRequestPost(context) {
   const headerName = request.headers.get('X-Draw-Name')
   const queryName = new URL(request.url).searchParams.get('name')
   const name = (bodyName || headerName || queryName || '').trim()
-  if (!name) {
-    return json({ error: '缺少 name（请带上你的名字）' }, 400)
-  }
 
   if (!env.LIGHTFIELD_KV) {
     return json({ error: 'LIGHTFIELD_KV is not configured' }, 500)
