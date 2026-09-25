@@ -88,6 +88,28 @@
         margin-bottom: 16px;
       }
 
+      .custom-toggle {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+
+      #customBtn {
+        height: 40px;
+        padding: 0 26px;
+        border-radius: 999px;
+        background: #f0ece4;
+        color: #6b5f50;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+      }
+
+      #customBtn.active {
+        background: #3b342c;
+        color: #fff;
+      }
+
       .swatch {
         flex: 0 0 auto;
         width: 38px;
@@ -320,19 +342,24 @@
 
     <div class="pick-wrap" id="pickWrap" hidden>
       <div class="preset-row" id="presetRow"></div>
-      <div class="pick-main">
-        <div class="sv-box" id="svBox">
-          <canvas id="svCanvas"></canvas>
-          <canvas id="svMarker"></canvas>
-        </div>
-        <div class="hue-box" id="hueBox">
-          <canvas id="hueCanvas"></canvas>
-          <canvas id="hueMarker"></canvas>
-        </div>
+      <div class="custom-toggle">
+        <button id="customBtn" type="button">自定义</button>
       </div>
-      <div class="cur">
-        <span class="cur-swatch" id="curSwatch"></span>
-        <span id="curHex">#e53935</span>
+      <div id="hsvBody" hidden>
+        <div class="pick-main">
+          <div class="sv-box" id="svBox">
+            <canvas id="svCanvas"></canvas>
+            <canvas id="svMarker"></canvas>
+          </div>
+          <div class="hue-box" id="hueBox">
+            <canvas id="hueCanvas"></canvas>
+            <canvas id="hueMarker"></canvas>
+          </div>
+        </div>
+        <div class="cur">
+          <span class="cur-swatch" id="curSwatch"></span>
+          <span id="curHex">#e53935</span>
+        </div>
       </div>
     </div>
 
@@ -421,6 +448,8 @@
       /* ---------- 颜色 ---------- */
       const pickWrap = document.getElementById('pickWrap')
       const toolColorBtn = document.getElementById('toolColor')
+      const hsvBody = document.getElementById('hsvBody')
+      const customBtn = document.getElementById('customBtn')
       const presetRow = document.getElementById('presetRow')
       const svBox = document.getElementById('svBox')
       const svCanvas = document.getElementById('svCanvas')
@@ -436,12 +465,20 @@
       let H = 0, S = 0.77, V = 0.9
       let SW = 0, SH = 0, HW = 0, HH = 0
       let pickOpen = false
+      let hsvOpen = false
 
       toolColorBtn.addEventListener('click', () => {
         pickOpen = !pickOpen
         pickWrap.hidden = !pickOpen
         toolColorBtn.classList.toggle('active', pickOpen)
-        if (pickOpen) resizePicker()
+        if (pickOpen && hsvOpen) resizePicker()
+      })
+
+      customBtn.addEventListener('click', () => {
+        hsvOpen = !hsvOpen
+        hsvBody.hidden = !hsvOpen
+        customBtn.classList.toggle('active', hsvOpen)
+        if (hsvOpen) resizePicker()
       })
 
       function hexToRgb(hex) {
@@ -519,7 +556,7 @@
       }
 
       function resizePicker() {
-        if (!pickOpen) return
+        if (!pickOpen || !hsvOpen) return
         const sRect = svBox.getBoundingClientRect()
         SW = Math.max(20, Math.round(sRect.width * dpr))
         SH = SW
