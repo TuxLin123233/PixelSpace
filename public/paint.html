@@ -816,7 +816,7 @@
       function drawGrid() {
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.10)'
         ctx.lineWidth = 1
-        for (let i = 0; i <= SIZE; i++) {
+        for (let i = 1; i < SIZE; i++) {
           const p = i * CELL + 0.5
           ctx.beginPath()
           ctx.moveTo(p, 0)
