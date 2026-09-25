@@ -422,6 +422,87 @@
         color: #6b5f50;
       }
 
+      .preview-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        background: rgba(20, 15, 10, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .preview-overlay[hidden] { display: none; }
+
+      .preview-box {
+        width: 100%;
+        max-width: 380px;
+        background: #fff;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        text-align: center;
+      }
+
+      .preview-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .preview-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #3b342c;
+      }
+
+      .preview-close {
+        border: none;
+        background: #efe9e0;
+        color: #6b5f50;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      #previewCanvas {
+        width: 220px;
+        height: 220px;
+        image-rendering: pixelated;
+        border-radius: 12px;
+        border: 2px solid rgba(0, 0, 0, 0.08);
+        background: #fff;
+      }
+
+      .preview-info {
+        margin-top: 12px;
+        font-size: 14px;
+        color: #3b342c;
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .preview-time {
+        font-size: 12px;
+        color: #b0a697;
+        font-weight: 400;
+      }
+
+      .preview-note {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #f0ece4;
+        font-size: 12px;
+        color: #b0a697;
+        line-height: 1.6;
+      }
+
       button:active { transform: scale(0.96); }
       button:disabled { opacity: 0.55; cursor: not-allowed; }
     </style>
@@ -504,6 +585,21 @@
     <div class="copyright">© 2026 光域画板 · 版权所有 · 作者 Lin Sifan</div>
 
     <div id="toast"></div>
+
+    <div class="preview-overlay" id="previewOverlay" hidden>
+      <div class="preview-box">
+        <div class="preview-head">
+          <span class="preview-title">作品预览</span>
+          <button class="preview-close" id="previewClose" type="button">关闭</button>
+        </div>
+        <canvas id="previewCanvas"></canvas>
+        <div class="preview-info">
+          <span id="previewAuthor"></span>
+          <span id="previewTime" class="preview-time"></span>
+        </div>
+        <div class="preview-note">仅支持预览，不可载入作画。请勿抄袭或直接提交他人的作品。</div>
+      </div>
+    </div>
 
     <script>
       const SIZE = 16
@@ -1013,7 +1109,7 @@
           const tile = document.createElement('button')
           tile.type = 'button'
           tile.className = 'tile'
-          tile.title = '点击载入画板'
+          tile.title = '点击预览'
 
           const c = document.createElement('canvas')
           c.width = 16
@@ -1039,24 +1135,44 @@
           meta.append(nm, tm)
 
           tile.append(c, meta)
-          tile.addEventListener('click', () => loadRecord(rec))
+          tile.addEventListener('click', () => previewRecord(rec))
           recordList.appendChild(tile)
         })
       }
 
-      function loadRecord(rec) {
-        pushUndo()
-        const flat = rec.pixels
-        pixels = Array.from({ length: SIZE }, (_, y) =>
-          Array.from({ length: SIZE }, (_, x) => {
-            const px = flat[y * SIZE + x]
-            return px ? [px[0], px[1], px[2]] : [255, 255, 255]
-          })
-        )
-        redraw()
-        scheduleSave()
-        toast('已载入「' + (rec.name || '匿名') + '」的作品')
+      function previewRecord(rec) {
+        const c = document.getElementById('previewCanvas')
+        c.width = 16 * dpr
+        c.height = 16 * dpr
+        const tc = c.getContext('2d')
+        tc.clearRect(0, 0, 16 * dpr, 16 * dpr)
+        for (let y = 0; y < 16; y++) {
+          for (let x = 0; x < 16; x++) {
+            const px = rec.pixels[y * 16 + x]
+            if (!px) continue
+            tc.fillStyle = `rgb(${px[0]}, ${px[1]}, ${px[2]})`
+            tc.fillRect(x * dpr, y * dpr, dpr, dpr)
+          }
+        }
+        document.getElementById('previewAuthor').textContent = '作者：' + (rec.name || '匿名')
+        document.getElementById('previewTime').textContent = formatTime(rec.time)
+        previewOverlay.hidden = false
       }
+
+      const previewOverlay = document.getElementById('previewOverlay')
+      const previewClose = document.getElementById('previewClose')
+
+      function closePreview() {
+        previewOverlay.hidden = true
+      }
+
+      previewClose.addEventListener('click', closePreview)
+      previewOverlay.addEventListener('click', (e) => {
+        if (e.target === previewOverlay) closePreview()
+      })
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePreview()
+      })
 
       const uploadBtn = document.getElementById('uploadBtn')
       uploadBtn.addEventListener('click', async () => {
