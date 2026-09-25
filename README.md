@@ -1,85 +1,71 @@
-# PixelSpace
+# PixelSpace · 光域画板
 
-一个用 Vue 3 搭建的像素画作品展示站。目前主要收录了作者逐步摸索像素画的过程,顺便当个作品集放在这里。
+一个挂在 **Cloudflare Pages** 上的 16×16 像素画板，实时联动 LED 灯板（16×16 灯阵）。浏览器里画的每一笔，都能以像素画的形式传给灯板展示。
+
+线上地址：<https://pixel-space-9bn.pages.dev>
+
+## 特性
+
+- **16×16 在线画板**（自带撤销、橡皮擦、颜料桶、命名上传）
+- **草稿自动保存**（本地草稿，刷新/返回不丢失）
+- **作品库**：画板展示最新 10 条，更多走 `/gallery` 卡片流，滚动懒加载（每页 24 张）
+- **LED 灯板支持**：`GET /api/get?single=1` 每次只回一张随机作品，保证灯板缓存轻量
+- **历史容量**：最多保留 **1000** 条，超出自动删除最旧
+- **防抄袭**：历史/画廊仅可预览，不能载入；内容完全相同的作品拒绝重复发布（409）
+- **管理后台**：密钥校验，支持删除单条 / 清空（可配合举报）
+- **纯色提醒**：画板提示尽量少用纯黑，避免灯板出现"熄灭空洞"
 
 ## 技术栈
 
-- [Vue 3](https://cn.vuejs.org/) + `<script setup>` 组合式 API
-- [Vite](https://vite.dev/) 构建
-- [Pinia](https://pinia.vuejs.org/) 状态管理
-- [Vue Router](https://router.vuejs.org/)
-- 像素字体 [TerrarumSansBitmap](https://github.com/gameboy47/terrarumsansbitmap)(本地 `src/assets/fonts`)
+- 前端：原生 HTML / CSS / JS（单文件页面，无框架）
+- 后端：Cloudflare Pages Functions
+- 存储：Cloudflare KV（`LIGHTFIELD_KV`）
 
 ## 页面
 
-导航目前由 `App.vue` 里的 `currentPage` 简单切换:
-
-- **作品集(Gallery)** — 主页面
-  - 卡片展示,按 `size` 字段自适应图片大小
-  - 顶部搜索框按标题过滤
-  - 点击卡片弹出详情窗(category 按类别着色:自然/食物/风景)
-- **开始创作(Create)** — 目前只有一个 canvas 占位,还没实现
-- 关于 / 联系 / 我的作品 / 设置 — 暂无内容
-
-## 项目结构
-
-```
-pixel-space/
-├── index.html
-├── vite.config.js            # @ 指向 src 的别名
-└── src/
-    ├── main.js               # 入口,挂载 Pinia + Router
-    ├── App.vue               # 顶栏导航 + 页面切换
-    ├── assets/
-    │   ├── fonts/            # 像素字体
-    │   ├── svgs/             # 顶栏图标
-    │   ├── global.css        # CSS 变量 + 类别配色
-    ├── components/
-    │   ├── pixelCard.vue     # 作品卡片
-    │   └── imageModal.vue    # 详情弹窗
-    ├── composables/
-    │   └── getPixelImages.js # 按标题查作品图片
-    ├── data/
-    │   └── PixelArts.json    # 作品数据
-    ├── router/index.js       # 路由(暂未用,列表为空)
-    ├── stores/counter.js     # 示例 store
-    └── views/
-        ├── Gallery.vue
-        └── Create.vue
-```
-
-## 作品数据格式
-
-新增作品改 `src/data/PixelArts.json` 即可,图片放 `public/images/`。
-
-```json
-{
-    "id": 5,
-    "title": "三叶草",
-    "description": "找了半天也没找到四叶的,先画个三叶的。",
-    "image": "/images/三叶草.png",
-    "date": "2025-xx-xx",
-    "category": "自然",
-    "size": 2,
-    "author": "tux",
-    "like": 0
-}
-```
-
-| 字段 | 说明 |
+| 路由 | 说明 |
 | --- | --- |
-| `category` | 类别:自然 / 食物 / 风景,决定卡片和弹窗的配色 |
-| `size` | 展示大小 `0/1/2`,卡片与弹窗据此自适应图片尺寸 |
-| `author` | 作者 |
-| `like` | 点赞数 |
+| `/paint` | 画板主页（编辑 + 上传 + 最新 10 条） |
+| `/gallery` | 全部作品卡片流（懒加载，只读预览） |
+| `/admin` | 管理后台（`x-admin-key` 校验） |
+| `/terms` | 服务条款 |
+
+## API
+
+所有接口都在 `functions/api/`，均为 Pages Functions。
+
+| 接口 | 说明 |
+| --- | --- |
+| `POST /api/set` | 上传作品。body：`{ "pixels": [[r,g,b]×256], "name": "可选" }`；内容完全一致返回 409；历史超 1000 自动删最旧 |
+| `GET /api/get` | 返回最新作品 + 历史。`?after=<时间戳>` 无新作时随机回退旧图；`?limit=N&offset=M` 分页；`?single=1` 只返回随机一张（灯板用） |
+| `POST /api/admin/delete` | 按 `{ "time": 时间戳 }` 删除单条，header 需 `x-admin-key` |
+| `POST /api/admin/clear` | 清空全部，header 需 `x-admin-key` |
+| `GET /api/admin/verify` | 校验密钥，header 需 `x-admin-key` |
+
+## 灯板接入
+
+轮询即可，每次返回单张随机作品（不含历史，响应体小）：
+
+```
+GET /api/get?single=1
+→ { "pixels": [[r,g,b]×256], "name": "...", "time": 1234..., "random": true }
+```
 
 ## 本地开发
 
 ```sh
-npm install      # 安装依赖
-npm run dev      # 启动开发服务器(热更新)
-npm run build    # 打包到 dist/
-npm run preview  # 预览打包结果
+npm install
+npx wrangler pages dev public
 ```
 
-需要 Node.js `^22.18.0` 或 `>=24.12.0`。
+本地 KV 绑定见 `wrangler.toml` 中的注释：把 `id` 换成你 `lightfield` namespace 的 ID 才能读写 KV。
+
+> 目录里遗留的 `src/`（Vue 3 旧版作品集合页）已不再参与部署，仅作历史保留。
+
+## 部署配置（Cloudflare Pages 控制台）
+
+- **Functions → Bindings**：添加 KV 绑定
+  - Variable name：`LIGHTFIELD_KV`
+  - KV namespace：`lightfield`
+- **环境变量**：`ADMIN_KEY`（管理后台的密钥，页面和 `api/admin/*` 共用）
+- 构建指令：不用构建，直接部署 `public/` 目录即可（保留 `functions/`）
