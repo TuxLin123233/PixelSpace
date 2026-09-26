@@ -166,8 +166,11 @@
         border-radius: 999px;
         background: var(--surface);
         color: var(--text-muted);
-        font-size: 15px;
-        font-weight: 600;
+        font-size: 22px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
       }
 
@@ -274,6 +277,8 @@
         font-weight: 600;
       }
 
+      .cur-label { font-size: 13px; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+
       .cur-swatch {
         width: 26px;
         height: 26px;
@@ -281,6 +286,24 @@
         border: 2px solid rgba(0, 0, 0, 0.1);
         background: #e53935;
       }
+
+      .hex-input {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        height: 32px;
+        width: 92px;
+        border-radius: 8px;
+        border: 2px solid var(--border-input);
+        background: var(--surface);
+        outline: none;
+        color: var(--text);
+        padding: 0 8px;
+        text-transform: uppercase;
+      }
+
+      .hex-input:focus { border-color: var(--accent); }
 
       #curHex { letter-spacing: 0.5px; }
 
@@ -804,14 +827,20 @@
     </div>
 
     <div class="tools">
-      <button id="toolBrush" class="tool active" type="button" data-tool="brush">画笔</button>
-      <button id="toolEraser" class="tool" type="button" data-tool="eraser">橡皮擦</button>
-      <button id="toolFill" class="tool" type="button" data-tool="fill">颜料桶</button>
-      <button id="toolColor" class="tool" type="button">颜色</button>
+      <button id="toolBrush" class="tool active" type="button" data-tool="brush" title="画笔（B）">✏️</button>
+      <button id="toolEraser" class="tool" type="button" data-tool="eraser" title="橡皮擦（E）">🧽</button>
+      <button id="toolFill" class="tool" type="button" data-tool="fill" title="颜料桶（F）">🪣</button>
+      <button id="toolColor" class="tool" type="button" title="颜色（C）">🎨</button>
     </div>
 
     <div class="pick-wrap" id="pickWrap" hidden>
       <div class="preset-row" id="presetRow"></div>
+      <div class="cur">
+        <span class="cur-swatch" id="curSwatch"></span>
+        <span class="cur-label">当前色值</span>
+        <input id="curHex" class="hex-input" value="#e53935" maxlength="7" autocomplete="off"
+          aria-label="输入颜色代码" title="输入 #RRGGBB 使用自定义颜色">
+      </div>
       <div class="custom-toggle">
         <button id="customBtn" type="button">自定义</button>
       </div>
@@ -825,10 +854,6 @@
             <canvas id="hueCanvas"></canvas>
             <canvas id="hueMarker"></canvas>
           </div>
-        </div>
-        <div class="cur">
-          <span class="cur-swatch" id="curSwatch"></span>
-          <span id="curHex">#e53935</span>
         </div>
       </div>
     </div>
@@ -846,12 +871,12 @@
     </div>
 
     <div class="actions">
-      <button id="undoBtn" type="button" disabled>撤销</button>
-      <button id="clearBtn" type="button">清空</button>
+      <button id="undoBtn" type="button" title="撤销（Z）" disabled>↩️</button>
+      <button id="clearBtn" type="button" title="清空">🗑️</button>
       <button id="uploadBtn" type="button">上传</button>
     </div>
 
-    <div class="hint" id="hint">画笔：点按或滑动作画 · B 画笔 / E 橡皮 / F 填充 / C 颜色 / Z 撤销</div>
+    <div class="hint" id="hint">画笔：点按或滑动作画 · B 画笔 / E 橡皮 / F 填充 / C 颜色 / Z 撤销 · 输入 #RRGGBB 自定义颜色</div>
 
     <div class="black-tip">提示：请尽量少用纯黑色（#000000）画面，黑色在灯板上显示为熄灭，作品会像有洞一样。</div>
 
@@ -997,6 +1022,12 @@
         return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
       }
 
+      function parseHex(v) {
+        const m = String(v).trim().replace(/^#/, '')
+        if (!/^[0-9a-fA-F]{6}$/.test(m)) return null
+        return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)]
+      }
+
       function rgbToHsv([r, g, b]) {
         r /= 255; g /= 255; b /= 255
         const max = Math.max(r, g, b)
@@ -1042,22 +1073,38 @@
       })
 
       function setFromPreset(i) {
-        currentColor = presets[i].slice()
-        const [h, s, v] = rgbToHsv(currentColor)
-        if (H !== h) {
-          H = h
-          renderSV()
-        }
+        setFromRgb(presets[i])
+      }
+
+      function setFromRgb(rgb) {
+        currentColor = rgb.slice()
+        const [h, s, v] = rgbToHsv(rgb)
+        H = h
         S = s
         V = v
-        drawSVMarker()
-        drawHueMarker()
+        if (pickOpen && hsvOpen) {
+          renderSV()
+          drawSVMarker()
+          drawHueMarker()
+        }
         updateDisplay(currentColor)
       }
 
+      curHex.addEventListener('input', () => {
+        const rgb = parseHex(curHex.value)
+        if (rgb) setFromRgb(rgb)
+      })
+
+      curHex.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const rgb = parseHex(curHex.value)
+          if (rgb) setFromRgb(rgb)
+        }
+      })
+
       function updateDisplay(rgb) {
         curSwatch.style.background = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
-        curHex.textContent = '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('')
+        curHex.value = '#' + rgb.map((c) => c.toString(16).padStart(2, '0')).join('')
         swatches.forEach((sw, i) => sw.classList.toggle('selected', sameRgb(rgb, presets[i])))
       }
 
